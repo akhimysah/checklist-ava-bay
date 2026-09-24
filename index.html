@@ -374,6 +374,20 @@ table.ca tr.total td:first-child{background:var(--surface-2)!important}
 .hdrR{grid-area:sync;display:flex;align-items:center;gap:10px;justify-self:end}
 .hdrR .sync{grid-area:auto}
 @media(max-width:640px){.top-in{grid-template-areas:"brand sync" "date date" "prog prog"}}
+
+/* photos */
+.photo{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.photo .thumb{width:64px;height:64px;border-radius:8px;object-fit:cover;border:1px solid var(--line);cursor:zoom-in;background:var(--surface-2)}
+.photo .pbtn{display:inline-flex;align-items:center;gap:6px;padding:7px 11px;border-radius:7px;background:var(--accent);color:var(--accent-ink);font-size:12px;font-weight:600;cursor:pointer;position:relative;overflow:hidden;text-transform:none;letter-spacing:0}
+.photo .pbtn input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%}
+.photo .pbtn.busy{opacity:.6;pointer-events:none}
+.photo input[type=url]{flex:1;min-width:140px}
+.photo .prm{font-size:12px;color:var(--urg);font-weight:600}
+.pinfo{font-size:12px;color:var(--ink-3);font-style:italic}
+.mthumb{width:34px;height:34px;border-radius:6px;object-fit:cover;border:1px solid var(--line);cursor:zoom-in;vertical-align:middle}
+.a .sum .mthumb{width:40px;height:40px}
+.lb{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.85);display:grid;place-items:center;padding:20px;cursor:zoom-out}
+.lb img{max-width:100%;max-height:100%;border-radius:8px}
 </style>
 
 <style>:root{color-scheme:light}[hidden]{display:none!important}img{max-width:100%}</style>
@@ -609,7 +623,8 @@ function renderList(){
       const meta=[];
       if(it.h)meta.push(`<span>⏱ ${esc(it.h)}</span>`);if(it.r)meta.push(`<span>→ ${esc(it.r)}</span>`);if(it.a)meta.push(`<span>⚡ ${esc(it.a)}</span>`);
       if(it.due)meta.push(`<span>📅 ${esc(fmtDate(it.due))}</span>`);if(it.rc)meta.push(`<span>✓ recontrôlé</span>`);
-      if(it.link)meta.push(`<a href="${esc(it.link)}" target="_blank" rel="noopener" style="color:var(--accent)">📎 photo / lien</a>`);if(it.o)meta.push(`<span class="obs">${esc(it.o)}</span>`);
+      if(it.photo)meta.push(photoThumb(it,'mthumb'));
+      if(it.link)meta.push(`<a href="${esc(it.link)}" target="_blank" rel="noopener" style="color:var(--accent)">📎 lien</a>`);if(it.o)meta.push(`<span class="obs">${esc(it.o)}</span>`);
       const has=it.h||it.r||it.o||it.rc||it.a||it.due||it.link;
       rows.push(`<div class="item s-${it.s||'none'}" data-gi="${gi}">
         <span class="no num">${cid?`<span class="cid">${esc(cid)}</span>`:gi+1}</span>
@@ -628,7 +643,7 @@ function renderList(){
           <label class="chk"><input type="checkbox" data-f="rc" ${it.rc?'checked':''}>Recontrôlé</label>
           <label class="full">Action immédiate<input type="text" data-f="a" value="${esc(it.a||'')}" placeholder="Ce qui a été fait ou demandé"></label>
           <label class="full">Observations<textarea data-f="o" placeholder="Détail du problème, constat…">${esc(it.o||'')}</textarea></label>
-          <label class="full">Photo / lien<input type="url" data-f="link" value="${esc(it.link||'')}" placeholder="https://…"></label>
+          <label class="full">Photo / lien<div class="photo">${photoThumb(it,'thumb')}<span class="pbtn"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 5h2.5l1-2h5l1 2H14v8H2z"/><circle cx="8" cy="9" r="2.5"/></svg><span>${it.photo?'Remplacer la photo':'Prendre / choisir une photo'}</span><input type="file" accept="image/*" capture="environment" data-photo="${gi}"></span>${it.photo?`<button type="button" class="prm" data-prm="${gi}">Retirer</button>`:''}<input type="url" data-f="link" value="${esc(it.link||'')}" placeholder="ou coller un lien https://…"></div></label>
         </div>`:''}
       </div>`);
     });
@@ -738,7 +753,7 @@ function renderReg(){
   }
   const loadBtn=tab==='staff'?`<button class="addbtn ghost" data-loadteam>Charger l'équipe (${team.rows.filter(m=>fullName(m)&&!rows.some(r=>r.nom===fullName(m))).length})</button>`:'';
   $('#reg').innerHTML=`<div class="reg-head"><h2>${R.title}</h2>${loadBtn}<button class="addbtn" data-add>+ Ajouter une ligne</button><p>${R.intro}</p></div>${sug}
-    <div class="rows">${rows.length?rows.map(r=>`<div class="row g-${R.sev(r)||''}" data-id="${r.id}">${R.cols.map(c=>fieldHtml(c,r)).join('')}<button class="del" data-del="${r.id}" aria-label="Supprimer">×</button></div>`).join(''):`<div class="empty">Aucune ligne pour cette date.</div>`}</div>
+    <div class="rows">${rows.length?rows.map(r=>`<div class="row g-${R.sev(r)||''}" data-id="${r.id}">${r.photo?`<div style="grid-column:1/-1">${photoThumb(r,'thumb')}</div>`:''}${R.cols.map(c=>fieldHtml(c,r)).join('')}<button class="del" data-del="${r.id}" aria-label="Supprimer">×</button></div>`).join(''):`<div class="empty">Aucune ligne pour cette date.</div>`}</div>
     ${rows.length?`<div><button class="addbtn ghost" data-add>+ Ajouter une ligne</button></div>`:''}
     <datalist id="zonelist">${ZONE_NAMES.map(z=>`<option value="${esc(z)}">`).join('')}</datalist>`;
 }
@@ -748,7 +763,7 @@ $('#reg').addEventListener('click',e=>{
   if(b.dataset.loadteam!==undefined){team.rows.forEach(m=>{const n=fullName(m);if(n&&!rows.some(r=>r.nom===n))rows.push({id:uid(),nom:n,serv:m.sec+(m.fonction?' · '+m.fonction:'')})});persist();renderReg();return}
   if(b.dataset.add!==undefined){const r={id:uid()};if(tab==='ctrl'){const h=new Date().getHours();r.h=h<13?'10:30':h<16?'14:30':'17:30'}rows.push(r);persist();renderReg();const last=$('#reg .row:last-child input,#reg .row:last-child select');last&&last.focus()}
   else if(b.dataset.import!==undefined){const [k,g]=b.dataset.import.split(':'),gi=+g,it=itemsOf(k)[gi],[zi,i]=locate(k,gi);
-    rows.push({id:uid(),src:b.dataset.import,h:it.h||'',zone:nice(CL[k].sections[zi][0]),pb:itemText(k,zi,i)+(it.o?' — '+it.o:''),grav:it.s,tech:it.r||'',action:it.a||'',rc:''});persist();renderReg()}
+    rows.push({id:uid(),src:b.dataset.import,h:it.h||'',zone:nice(CL[k].sections[zi][0]),pb:itemText(k,zi,i)+(it.o?' — '+it.o:''),grav:it.s,tech:it.r||'',action:it.a||'',rc:'',photo:it.photo||null});persist();renderReg()}
   else if(b.dataset.del!==undefined){if(!b.classList.contains('confirm')){b.classList.add('confirm');b.textContent='Supprimer ?';setTimeout(()=>{b.classList.remove('confirm');b.textContent='×'},2500);return}
     state.regs[tab]=rows.filter(r=>r.id!==b.dataset.del);persist();renderReg()}
 });
@@ -833,7 +848,7 @@ function renderSuivi(){
   const card=r=>{const st=actState(r);const late=st==='late';const opn=suiviOpen.has(r.id);
     return `<div class="a g-${st}" data-id="${r.id}">
       <div class="sum" data-open="${r.id}">
-        <span class="crit ${r.crit==='urg'?'urg':''}" title="${r.crit==='urg'?'Critique':'Normale'}"></span>
+        <span class="crit ${r.crit==='urg'?'urg':''}" title="${r.crit==='urg'?'Critique':'Normale'}"></span>${r.photo?photoThumb(r,'mthumb'):''}
         <div class="what"><div class="z">${esc(r.zone||SRC_L[r.src]||'')}${r.date?' · '+fmtDate(r.date):''}</div><div class="p ${r.pb?'':'empty'}">${esc(r.pb||'Anomalie à décrire')}</div></div>
         <span class="who">${esc(r.resp||'—')}</span>
         <span class="due ${r.st==='done'?'done':late?'late':''}">${r.st==='done'?'✓ '+(r.res?fmtDate(r.res):'résolue'):r.due?(late?'⚠ ':'')+fmtDate(r.due):'sans échéance'}</span>
@@ -855,7 +870,7 @@ $('#suivi').addEventListener('click',e=>{
   if(!b){const sm=e.target.closest('.sum');if(sm&&!e.target.closest('select')){const id=sm.dataset.open;suiviOpen.has(id)?suiviOpen.delete(id):suiviOpen.add(id);renderSuivi()}return}
   if(b.dataset.add!==undefined){const r={id:uid(),n:nextN(day),date:day,st:'todo',crit:'fix'};suivi.rows.push(r);suiviOpen.add(r.id);suiviFilter='open';persistSuivi();renderSuivi();const f=$('#suivi .form input[data-k=pb]');f&&f.focus()}
   else if(b.dataset.import!==undefined){const [c,g]=b.dataset.import.split(':'),gi=+g,it=itemsOf(c)[gi],[zi,i]=locate(c,gi);
-    const r={id:uid(),n:nextN(day),date:day,srcKey:day+':'+c+':'+gi,src:c,crit:it.s,zone:nice(CL[c].sections[zi][0]),pb:itemText(c,zi,i)+(it.o?' — '+it.o:''),act:it.a||'',resp:it.r||'',due:it.due||'',st:'todo'};suivi.rows.push(r);suiviOpen.add(r.id);persistSuivi();renderSuivi()}
+    const r={id:uid(),n:nextN(day),date:day,srcKey:day+':'+c+':'+gi,src:c,crit:it.s,zone:nice(CL[c].sections[zi][0]),pb:itemText(c,zi,i)+(it.o?' — '+it.o:''),act:it.a||'',resp:it.r||'',due:it.due||'',st:'todo',photo:it.photo||null};suivi.rows.push(r);suiviOpen.add(r.id);persistSuivi();renderSuivi()}
   else if(b.dataset.sf){suiviFilter=b.dataset.sf;renderSuivi()}
   else if(b.dataset.close!==undefined){suiviOpen.delete(b.dataset.close);renderSuivi()}
   else if(b.dataset.del!==undefined){if(!b.classList.contains('confirm')){b.classList.add('confirm');b.textContent='Confirmer la suppression';setTimeout(()=>{b.classList.remove('confirm');b.textContent='Supprimer'},3000);return}
@@ -943,6 +958,37 @@ $('#appearReset').onclick=()=>{appear={theme:'auto',accent:'',font:'sora',size:'
 matchMedia('(prefers-color-scheme:dark)').addEventListener('change',applyAppear);
 applyAppear();
 
+
+/* ---------- photos ---------- */
+let assets=null,photos={};
+try{photos=JSON.parse(localStorage.getItem('ava-photos')||'{}')}catch(e){}
+function photoSrc(p){if(!p)return null;if(p.id)return '/_blob/'+p.id;if(p.local)return photos[p.local]||null;return null}
+function photoThumb(it,cls){if(!it.photo)return '';const src=photoSrc(it.photo);if(!src)return `<span class="pinfo">photo enregistrée sur un autre appareil</span>`;return `<img class="${cls}" src="${src}" alt="Photo" data-lb="1">`}
+function shrink(file,max=1200,q=.78){return new Promise((res,rej)=>{const img=new Image();const u=URL.createObjectURL(file);img.onload=()=>{const r=Math.min(1,max/Math.max(img.width,img.height));const c=document.createElement('canvas');c.width=Math.round(img.width*r);c.height=Math.round(img.height*r);c.getContext('2d').drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(u);c.toBlob(b=>b?res(b):rej(new Error('blob')),'image/jpeg',q)};img.onerror=()=>{URL.revokeObjectURL(u);rej(new Error('img'))};img.src=u})}
+async function addPhoto(gi,file){
+  const k=curCL(),it=item(k,gi);
+  let blob;try{blob=await shrink(file)}catch(e){blob=file}
+  if(assets){try{const r=await assets.upload(blob,{type:'image/jpeg'});it.photo={id:r.id};persist();render();return}catch(e){console.warn('upload',e)}}
+  const key=day+':'+k+':'+gi+':'+uid();
+  const dataUrl=await new Promise(res=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.readAsDataURL(blob)});
+  photos[key]=dataUrl;
+  try{localStorage.setItem('ava-photos',JSON.stringify(photos))}catch(e){setSync('','Mémoire photos pleine');return render()}
+  it.photo={local:key};persist();render();
+}
+$('#list').addEventListener('change',async e=>{
+  if(e.target.dataset.photo===undefined)return;const f=e.target.files&&e.target.files[0];if(!f)return;
+  const btn=e.target.closest('.pbtn');btn.classList.add('busy');btn.querySelector('span').textContent='Envoi…';
+  await addPhoto(+e.target.dataset.photo,f);
+});
+$('#list').addEventListener('click',e=>{
+  const b=e.target.closest('button[data-prm]');if(!b)return;
+  const it=item(curCL(),+b.dataset.prm);const p=it.photo;delete it.photo;
+  if(p&&p.local){delete photos[p.local];try{localStorage.setItem('ava-photos',JSON.stringify(photos))}catch(x){}}
+  if(p&&p.id&&assets)assets.delete(p.id).catch(()=>{});
+  persist();render();
+});
+document.addEventListener('click',e=>{const im=e.target.closest('img[data-lb]');if(!im)return;const lb=document.createElement('div');lb.className='lb';lb.innerHTML=`<img src="${im.getAttribute('src')}" alt="">`;lb.onclick=()=>lb.remove();document.body.appendChild(lb)});
+
 /* ---------- boot ---------- */
 function start(snap){
   if(snap&&snap.day){day=snap.day;state=snap.state?norm(snap.state):state;open=new Set(snap.open||[]);tab=snap.tab||'open';if(snap.suivi)suivi=snap.suivi}
@@ -953,6 +999,7 @@ function start(snap){
   render();
   window.claude?.hot?.snapshot?.(()=>({day,state,open:[...open],tab,suivi,team}));
   window.claude?.use?.('db').then(d=>{if(!d)return;db=d;subscribeDay();subscribeSuivi();subscribeTeam()}).catch(()=>{});
+  window.claude?.use?.('assets').then(a=>{assets=a}).catch(()=>{});
 }
 window.claude?.hot?.ready?window.claude.hot.ready(start):start(window.claude?.hot?.data);
 window.addEventListener('pagehide',flush);
