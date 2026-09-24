@@ -388,6 +388,22 @@ table.ca tr.total td:first-child{background:var(--surface-2)!important}
 .a .sum .mthumb{width:40px;height:40px}
 .lb{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.85);display:grid;place-items:center;padding:20px;cursor:zoom-out}
 .lb img{max-width:100%;max-height:100%;border-radius:8px}
+
+/* sous-onglets secteurs */
+.sectabs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px;margin:0 -16px;padding-inline:16px}
+.sectabs button{flex:none;display:inline-flex;align-items:center;gap:7px;padding:8px 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface);font-size:13px;font-weight:600;color:var(--ink-2);white-space:nowrap}
+.sectabs button:hover{background:var(--surface-2)}
+.sectabs button[aria-selected=true]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.sectabs button .dot{width:8px;height:8px;border-radius:50%;background:var(--line)}
+.sectabs button[aria-selected=true] .dot{outline:2px solid rgba(255,255,255,.5)}
+.sectabs button .dot.ok{background:var(--ok)}.sectabs button .dot.fix{background:var(--fix)}.sectabs button .dot.urg{background:var(--urg)}.sectabs button .dot.part{background:var(--accent)}
+.sectabs button[aria-selected=true] .dot.part{background:#fff}
+.sectabs button .n{font-size:11px;opacity:.8}
+.secnav{display:flex;justify-content:space-between;gap:8px;margin-top:4px}
+.secnav button{font-size:13px;font-weight:600;color:var(--accent);padding:8px 12px;border-radius:7px;border:1px solid var(--line)}
+.secnav button:hover{background:var(--accent-soft)}
+.secnav button:disabled{opacity:.35;pointer-events:none}
+.wrap.sectors{grid-template-columns:1fr}
 </style>
 
 <style>:root{color-scheme:light}[hidden]{display:none!important}img{max-width:100%}</style>
@@ -441,6 +457,7 @@ table.ca tr.total td:first-child{background:var(--surface-2)!important}
 <div class="wrap" id="wrap">
   <nav class="zones" id="zones"></nav>
   <main>
+    <div class="sectabs" id="sectabs" hidden></div>
     <div class="toolbar" id="toolbar">
       <input type="search" id="q" placeholder="Rechercher un point de contrôle…" aria-label="Rechercher">
       <button class="pill btn" id="expandAll">Tout déplier</button>
@@ -458,6 +475,7 @@ table.ca tr.total td:first-child{background:var(--surface-2)!important}
       <p class="rule" style="margin:0">Le rapport d'ouverture est envoyé à Inès avant l'accueil des premières clientes ; le rapport de clôture après la fermeture, avec le bilan de la journée et les actions restant ouvertes. Toute action ouverte est reportée dans l'onglet Suivi actions.</p>
     </div>
     <div id="list"></div>
+    <div class="secnav" id="secnav" hidden></div>
     <div id="reg" hidden></div>
     <div id="bilan" hidden></div>
     <div id="suivi" hidden></div>
@@ -504,6 +522,8 @@ const CL={
         fields:[['who','Contrôle réalisé par','text','Nom'],['date','Date du contrôle','date'],['sent','Transmis à Inès le','date']],decision:false,word:'Contrôle hebdo'},
 };
 for(const k in CL){const c=CL[k];c.total=c.sections.reduce((a,s)=>a+s[1].length,0);c.zkey=c.sections.map(s=>k+'-'+s[0].replace(/[^A-Za-zÀ-ÿ0-9]+/g,'_').slice(0,30));c.base=[];let b=0;c.sections.forEach(s=>{c.base.push(b);b+=s[1].length})}
+const SECTOR_TABS=new Set(['hebdo']);
+let secSel={};
 const isCL=k=>k in CL;
 const itemText=(k,zi,i)=>{const it=CL[k].sections[zi][1][i];return typeof it==='string'?it:it[1]};
 const itemId=(k,zi,i)=>{const it=CL[k].sections[zi][1][i];return typeof it==='string'?'':it[0]};
@@ -608,7 +628,9 @@ function setIf(sel,val){const el=$(sel);if(document.activeElement!==el&&el.value
 function renderTabs(){
   const isC=isCL(tab);
   $('#wrap').classList.toggle('reg',!isC);
-  $('#zones').hidden=!isC;$('#toolbar').hidden=!isC;$('#list').hidden=!isC;$('#synth').hidden=!isC;
+  const secMode=isC&&SECTOR_TABS.has(tab);
+  $('#zones').hidden=!isC||secMode;$('#sectabs').hidden=!secMode;$('#secnav').hidden=!secMode;$('#wrap').classList.toggle('sectors',secMode);
+  $('#toolbar').hidden=!isC;$('#list').hidden=!isC;$('#synth').hidden=!isC;
   if(!isC)$('#help').hidden=true;
   $('#reg').hidden=!(tab in REGS);$('#bilan').hidden=tab!=='bilan';$('#suivi').hidden=tab!=='suivi';$('#team').hidden=tab!=='team';
   for(const b of document.querySelectorAll('#tabs button')) b.setAttribute('aria-selected',b.dataset.tab===tab);
@@ -616,13 +638,22 @@ function renderTabs(){
 }
 function renderZones(){
   const k=curCL(),c=CL[k];
+  if(SECTOR_TABS.has(k)){
+    const cur=secSel[k]??0;
+    $('#sectabs').innerHTML=c.sections.map((sec,zi)=>{const z=zoneState(k,zi);const dot=z.urg?'urg':z.fix?'fix':z.done===z.n?'ok':z.done?'part':'';
+      return `<button role="tab" data-sec="${zi}" aria-selected="${zi===cur}"><span class="dot ${dot}"></span>${esc(sec[0])}<span class="n num">${z.done}/${z.n}</span></button>`}).join('');
+    $('#secnav').innerHTML=`<button data-secnav="-1" ${cur===0?'disabled':''}>‹ ${cur>0?esc(c.sections[cur-1][0]):''}</button><button data-secnav="1" ${cur>=c.sections.length-1?'disabled':''}>${cur<c.sections.length-1?esc(c.sections[cur+1][0]):''} ›</button>`;
+    const act=$('#sectabs button[aria-selected=true]');act&&act.scrollIntoView({block:'nearest',inline:'center'});
+  }
   $('#zones').innerHTML=c.sections.map((sec,zi)=>{const z=zoneState(k,zi);const dot=z.urg?'urg':z.fix?'fix':z.done===z.n?'ok':z.done?'part':'';
     return `<a href="#${c.zkey[zi]}" data-z="${zi}"><span class="dot ${dot}"></span><span class="t">${esc(nice(sec[0]))}</span><span class="n num">${z.done}/${z.n}</span></a>`}).join('');
 }
 function matches(it,text){if(query&&!text.toLowerCase().includes(query))return false;if(!filter)return true;const s=it?.s;if(filter==='todo')return !s;return s===filter}
 function renderList(){
   const k=curCL(),c=CL[k],items=itemsOf(k);let html='';
+  const secMode=SECTOR_TABS.has(k),cur=secSel[k]??0;
   c.sections.forEach((sec,zi)=>{
+    if(secMode&&zi!==cur&&!query&&!filter)return;
     const z=zoneState(k,zi);const rows=[];
     sec[1].forEach((_,i)=>{
       const gi=z.base+i,it=items[gi]||{},text=itemText(k,zi,i),cid=itemId(k,zi,i),ztag=itemZone(k,zi,i);
@@ -657,7 +688,7 @@ function renderList(){
       </div>`);
     });
     if(!rows.length) return;
-    const closed=!(open.has(zi)||query||filter||c.sections.length===1);
+    const closed=!(open.has(zi)||query||filter||c.sections.length===1||secMode);
     html+=`<section class="zone ${closed?'closed':''} ${z.done===z.n?'complete':''}" id="${c.zkey[zi]}" data-z="${zi}">
       <header data-fold="${zi}"><span class="zk num">${String(zi+1).padStart(2,'0')}</span><h2>${esc(nice(sec[0]))}</h2>
         <span class="zn num ${z.done===z.n?'done':''}">${z.done===z.n?'✓ ':''}${z.done}/${z.n}</span>
@@ -695,6 +726,8 @@ $('#list').addEventListener('input',e=>{
 });
 $('#list').addEventListener('change',e=>{if(e.target.dataset.f&&e.target.dataset.f!=='rc')render()});
 $('#zones').addEventListener('click',e=>{const a=e.target.closest('a');if(!a)return;open.add(+a.dataset.z);renderList();for(const x of document.querySelectorAll('nav.zones a'))x.classList.toggle('active',x===a)});
+$('#sectabs').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;secSel[curCL()]=+b.dataset.sec;renderZones();renderList();window.scrollTo({top:0})});
+$('#secnav').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const k=curCL();secSel[k]=Math.max(0,Math.min(CL[k].sections.length-1,(secSel[k]??0)+ +b.dataset.secnav));renderZones();renderList();window.scrollTo({top:0})});
 $('#expandAll').onclick=()=>{CL[curCL()].sections.forEach((_,i)=>open.add(i));renderList()};
 $('#collapseAll').onclick=()=>{open.clear();renderList()};
 $('#helpBtn').onclick=()=>{const h=$('#help');h.hidden=!h.hidden;$('#helpBtn').setAttribute('aria-pressed',!h.hidden)};
