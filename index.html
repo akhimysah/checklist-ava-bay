@@ -404,6 +404,35 @@ table.ca tr.total td:first-child{background:var(--surface-2)!important}
 .secnav button:hover{background:var(--accent-soft)}
 .secnav button:disabled{opacity:.35;pointer-events:none}
 .wrap.sectors{grid-template-columns:1fr}
+
+/* accueil */
+.home{display:grid;gap:16px;max-width:900px}
+.hhead h2{font-size:22px}
+.hhead p{margin:4px 0 0;color:var(--ink-2);font-size:14px}
+.alert{display:flex;gap:10px;align-items:center;padding:12px 14px;border-radius:var(--r);background:var(--urg-soft);color:var(--urg);font-weight:600;font-size:13px;border:1px solid color-mix(in srgb,var(--urg) 30%,transparent)}
+.alert.warn{background:var(--fix-soft);color:var(--fix);border-color:color-mix(in srgb,var(--fix) 30%,transparent)}
+.alert button{margin-left:auto;font-size:12px;font-weight:600;padding:5px 10px;border-radius:6px;border:1px solid currentColor;white-space:nowrap}
+.phase{display:grid;gap:8px}
+.phase>h3{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);display:flex;align-items:center;gap:10px}
+.phase>h3::after{content:"";flex:1;height:1px;background:var(--line)}
+.step{display:grid;grid-template-columns:36px 1fr auto;gap:4px 14px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;cursor:pointer;border-left:3px solid var(--line)}
+.step:hover{background:var(--surface-2)}
+.step.next{border-color:var(--accent);border-left-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.step.done{border-left-color:var(--ok)}.step.done .t{color:var(--ink-2)}
+.step.warn{border-left-color:var(--fix)}.step.urg{border-left-color:var(--urg)}
+.step .num{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;font-family:var(--fd);font-weight:700;font-size:14px;background:var(--surface-2);color:var(--ink-2)}
+.step.next .num{background:var(--accent);color:var(--accent-ink)}
+.step.done .num{background:var(--ok-soft);color:var(--ok)}
+.step .t{font-weight:600;font-size:14.5px}
+.step .d{font-size:12.5px;color:var(--ink-2);margin-top:2px}
+.step .st{font-size:12px;font-weight:600;padding:5px 10px;border-radius:999px;background:var(--surface-2);color:var(--ink-2);white-space:nowrap}
+.step.next .st{background:var(--accent);color:var(--accent-ink)}
+.step.done .st{background:var(--ok-soft);color:var(--ok)}
+.step.warn .st{background:var(--fix-soft);color:var(--fix)}.step.urg .st{background:var(--urg-soft);color:var(--urg)}
+.step .bar{grid-column:2/4;height:4px;margin-top:6px}
+@media(max-width:560px){.step{grid-template-columns:32px 1fr}.step .st{grid-column:2;justify-self:start}.step .bar{grid-column:1/3}}
+.hgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:560px){.hgrid{grid-template-columns:1fr}}
 </style>
 
 <style>:root{color-scheme:light}[hidden]{display:none!important}img{max-width:100%}</style>
@@ -440,16 +469,17 @@ table.ca tr.total td:first-child{background:var(--surface-2)!important}
   </div>
 </div>
 <div class="tabs" role="tablist" id="tabs">
-  <button role="tab" data-tab="open" aria-selected="true">Ouverture direction</button>
+  <button role="tab" data-tab="home" aria-selected="true">Aujourd'hui</button>
+  <button role="tab" class="grp" data-tab="open" aria-selected="false">Ouverture direction</button>
   <button role="tab" data-tab="assia" aria-selected="false">Parcours client</button>
-  <button role="tab" data-tab="ferm" aria-selected="false">Fermeture</button>
-  <button role="tab" data-tab="hebdo" aria-selected="false">Contrôles hebdo</button>
-  <button role="tab" class="grp" data-tab="tech" aria-selected="false">Pb. techniques <span class="n num" id="nTech">0</span></button>
-  <button role="tab" data-tab="stock" aria-selected="false">Stock <span class="n num" id="nStock">0</span></button>
   <button role="tab" data-tab="staff" aria-selected="false">Personnel <span class="n num" id="nStaff">0</span></button>
   <button role="tab" data-tab="brief" aria-selected="false">Briefing <span class="n num" id="nBrief">0</span></button>
-  <button role="tab" data-tab="ctrl" aria-selected="false">Contrôles journée <span class="n num" id="nCtrl">0</span></button>
-  <button role="tab" class="grp" data-tab="bilan" aria-selected="false">Bilan</button>
+  <button role="tab" data-tab="stock" aria-selected="false">Stock <span class="n num" id="nStock">0</span></button>
+  <button role="tab" class="grp" data-tab="ctrl" aria-selected="false">Contrôles journée <span class="n num" id="nCtrl">0</span></button>
+  <button role="tab" data-tab="tech" aria-selected="false">Pb. techniques <span class="n num" id="nTech">0</span></button>
+  <button role="tab" class="grp" data-tab="ferm" aria-selected="false">Fermeture</button>
+  <button role="tab" data-tab="bilan" aria-selected="false">Bilan</button>
+  <button role="tab" class="grp" data-tab="hebdo" aria-selected="false">Contrôles hebdo</button>
   <button role="tab" data-tab="suivi" aria-selected="false">Suivi actions <span class="n num" id="nSuivi">0</span></button>
   <button role="tab" data-tab="team" aria-selected="false">Équipe <span class="n num" id="nTeam">0</span></button>
 </div></div>
@@ -476,6 +506,7 @@ table.ca tr.total td:first-child{background:var(--surface-2)!important}
     </div>
     <div id="list"></div>
     <div class="secnav" id="secnav" hidden></div>
+    <div id="home" hidden></div>
     <div id="reg" hidden></div>
     <div id="bilan" hidden></div>
     <div id="suivi" hidden></div>
@@ -537,7 +568,7 @@ let day=todayISO();
 let state=blank();
 let suivi={rows:[]};
 let week={items:{},synth:{}},weekUnsub=null,dirtyWeek=false,curWeek='';
-let tab='open', filter=null, query='';
+let tab='home', filter=null, query='';
 let db=null, dbUnsub=null, suiviUnsub=null;
 let open=new Set(), detail=new Set(), suiviFilter='open';
 
@@ -624,7 +655,7 @@ function render(){
   if(c.decision) for(const r of document.querySelectorAll('input[name=dec]')) r.checked=r.value===s.dec;
   $('#synthFields').innerHTML=c.fields.map(f=>`<label>${f[1]}<input type="${f[2]}" data-sf="${f[0]}" value="${esc(s[f[0]]||'')}" ${f[3]?`placeholder="${esc(f[3])}"`:''}></label>`).join('');
   setIf('#sNotes',s.notes||'');
-  renderZones(); renderList(); renderReg(); renderBilan(); renderSuivi(); renderTeam(); renderTabs();
+  renderZones(); renderList(); renderReg(); renderBilan(); renderSuivi(); renderTeam(); renderHome(); renderTabs();
 }
 function setIf(sel,val){const el=$(sel);if(document.activeElement!==el&&el.value!==val)el.value=val}
 function renderTabs(){
@@ -634,7 +665,7 @@ function renderTabs(){
   $('#zones').hidden=!isC||secMode;$('#sectabs').hidden=!secMode;$('#secnav').hidden=!secMode;$('#wrap').classList.toggle('sectors',secMode);
   $('#toolbar').hidden=!isC;$('#list').hidden=!isC;$('#synth').hidden=!isC;
   if(!isC)$('#help').hidden=true;
-  $('#reg').hidden=!(tab in REGS);$('#bilan').hidden=tab!=='bilan';$('#suivi').hidden=tab!=='suivi';$('#team').hidden=tab!=='team';
+  $('#home').hidden=tab!=='home';$('#reg').hidden=!(tab in REGS);$('#bilan').hidden=tab!=='bilan';$('#suivi').hidden=tab!=='suivi';$('#team').hidden=tab!=='team';
   for(const b of document.querySelectorAll('#tabs button')) b.setAttribute('aria-selected',b.dataset.tab===tab);
   $('#nSuivi').textContent=suivi.rows.filter(r=>r.st!=='done').length;
 }
@@ -1046,6 +1077,55 @@ $('#list').addEventListener('click',e=>{
   persist();render();
 });
 document.addEventListener('click',e=>{const im=e.target.closest('img[data-lb]');if(!im)return;const lb=document.createElement('div');lb.className='lb';lb.innerHTML=`<img src="${im.getAttribute('src')}" alt="">`;lb.onclick=()=>lb.remove();document.body.appendChild(lb)});
+
+
+/* ---------- accueil ---------- */
+function clStatus(k){const c=CL[k],st=stats(itemsOf(k));const left=c.total-st.done;return {st,left,total:c.total,cls:left===0?(st.urg?'urg':st.fix?'warn':'done'):st.urg?'urg':'',label:left===0?(st.urg?`${st.urg} critique${st.urg>1?'s':''}`:st.fix?`Terminé · ${st.fix} à corriger`:'Terminé ✓'):st.done?`${st.done}/${c.total}`:'À faire'}}
+function renderHome(){
+  if(tab!=='home')return;stepNo=1;
+  const d=new Date(day+'T12:00:00');const dateTxt=d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
+  const h=new Date().getHours();const isToday=day===todayISO();
+  const hello=!isToday?'':h<12?'Bonjour':h<18?'Bon après-midi':'Bonsoir';
+  const o=clStatus('open'),as=clStatus('assia'),fe=clStatus('ferm'),hb=clStatus('hebdo');
+  const R=state.regs;const slots=['10:30','14:30','17:30'].filter(t=>R.ctrl.some(r=>r.h===t));
+  const staffN=R.staff.length,briefN=R.brief.length,stockN=R.stock.length,techOpen=R.tech.filter(r=>!r.rc).length;
+  const bilanDone=!!state.bilan.sent,bilanStarted=Object.keys(state.bilan.ca).length||['rh','cx','inc','syn'].some(k=>Object.values(state.bilan[k]||{}).some(v=>v));
+  const today=todayISO();const late=suivi.rows.filter(r=>r.st!=='done'&&r.due&&r.due<today).length,openA=suivi.rows.filter(r=>r.st!=='done').length,critA=suivi.rows.filter(r=>r.st!=='done'&&r.crit==='urg').length;
+  const urgTotal=o.st.urg+as.st.urg+fe.st.urg;
+  const steps=[
+    ['Matin — avant l\'ouverture',[
+      ['open','Ouverture direction','Tour complet zone par zone · 423 points',o.cls,o.label,o.st.done/o.total],
+      ['assia','Parcours client (rapport pour Inès)','81 points, statut conforme / non conforme',as.cls,as.label,as.st.done/as.total],
+      ['staff','Pointage du personnel','Présence, retards, tenue',staffN?'done':'',staffN?`${staffN} pointé${staffN>1?'s':''}`:'À faire',null],
+      ['brief','Briefing des responsables','Priorité du jour par service',briefN?'done':'',briefN?`${briefN} responsable${briefN>1?'s':''}`:'À faire',null],
+      ['stock','Contrôle stock du matin','Théorique vs réel, commandes',stockN?'done':'',stockN?`${stockN} produit${stockN>1?'s':''}`:'À faire',null],
+    ]],
+    ['Journée',[
+      ['ctrl','Contrôles 10h30 · 14h30 · 17h30','Tour de contrôle par zone',slots.length===3?'done':'',slots.length?`${slots.length}/3 tours`:'À faire',slots.length/3],
+      ['tech','Registre des problèmes techniques','Pannes et anomalies à suivre',techOpen?'warn':(R.tech.length?'done':''),R.tech.length?(techOpen?`${techOpen} à recontrôler`:'Tout recontrôlé'):'Aucun problème',null],
+    ]],
+    ['Soir — fermeture',[
+      ['ferm','Fermeture','21 points, rapport pour Inès',fe.cls,fe.label,fe.st.done/fe.total],
+      ['bilan','Bilan de la journée','CA, RH, expérience cliente, incidents',bilanDone?'done':'',bilanDone?`Envoyé à ${state.bilan.sent}`:bilanStarted?'En cours':'À faire',null],
+    ]],
+  ];
+  let nextFound=false;
+  const html=steps.map(([phase,items])=>`<div class="phase"><h3>${phase}</h3>${items.map(([k,t,dsc,cls,label,pct],i)=>{
+    const isNext=!nextFound&&cls!=='done'&&cls!=='warn'&&cls!=='urg';if(isNext)nextFound=true;
+    return `<div class="step ${cls} ${isNext?'next':''}" data-go="${k}"><span class="num">${cls==='done'?'✓':stepNo++}</span><div><div class="t">${t}</div><div class="d">${dsc}</div></div><span class="st">${isNext&&cls===''?(label==='À faire'?'Commencer':label):label}</span>${pct!==null&&pct>0&&pct<1?`<div class="bar"><i class="ok" style="width:${pct*100}%"></i></div>`:''}</div>`}).join('')}</div>`).join('');
+  $('#home').innerHTML=`<div class="home">
+    <div class="hhead"><h2>${hello?hello+' · ':''}${dateTxt[0].toUpperCase()+dateTxt.slice(1)}</h2><p>${isToday?'Voici le parcours de la journée, dans l\'ordre. L\'étape en surbrillance est la prochaine à faire.':'Journée passée ou à venir — les étapes ci-dessous montrent ce qui a été renseigné pour cette date.'}</p></div>
+    ${urgTotal?`<div class="alert">⚠ ${urgTotal} point${urgTotal>1?'s':''} urgent${urgTotal>1?'s':''} / critique${urgTotal>1?'s':''} signalé${urgTotal>1?'s':''} aujourd'hui — Inès doit être alertée.<button data-go="suivi">Voir le suivi</button></div>`:''}
+    ${late?`<div class="alert warn">⏰ ${late} action${late>1?'s':''} en retard dans le suivi.<button data-go="suivi">Voir les actions</button></div>`:''}
+    ${html}
+    <div class="phase"><h3>Cette semaine</h3><div class="hgrid">
+      <div class="step ${hb.cls}" data-go="hebdo"><span class="num">${hb.cls==='done'?'✓':'S'}</span><div><div class="t">Contrôles hebdo</div><div class="d">${weekLabel(day)}</div></div><span class="st">${hb.label}</span>${hb.st.done>0&&hb.left>0?`<div class="bar"><i class="ok" style="width:${hb.st.done/hb.total*100}%"></i></div>`:''}</div>
+      <div class="step ${critA?'urg':late?'warn':openA?'':'done'}" data-go="suivi"><span class="num">${openA||'✓'}</span><div><div class="t">Suivi des actions</div><div class="d">${openA?`${openA} ouverte${openA>1?'s':''}${critA?` · ${critA} critique${critA>1?'s':''}`:''}${late?` · ${late} en retard`:''}`:'Aucune action ouverte'}</div></div><span class="st">${openA?'Voir':'OK'}</span></div>
+    </div></div>
+  </div>`;
+}
+let stepNo=1;
+$('#home').addEventListener('click',e=>{const el=e.target.closest('[data-go]');if(!el)return;tab=el.dataset.go;filter=null;detail.clear();open.clear();render();window.scrollTo({top:0})});
 
 /* ---------- boot ---------- */
 function start(snap){
