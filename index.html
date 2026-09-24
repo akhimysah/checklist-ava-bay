@@ -519,10 +519,12 @@ const CL={
   ferm:{title:'Rapport de fermeture — Assia → Inès',sections:FERM_ONE,na:true,labels:{ok:'Conforme',fix:'Non conforme',urg:'Critique'},kpi:['Conformes','Non conformes','Critiques'],reset:'Réinitialiser ce rapport',
         fields:[['start','Heure de début','time'],['end','Heure de fin','time'],['sent','Rapport envoyé à Inès à','time']],decision:false,word:'Fermeture'},
   hebdo:{title:'Contrôle hebdomadaire',sections:SECTIONS_HEBDO,na:true,labels:{ok:'OK',fix:'À corriger',urg:'Urgent'},kpi:['OK','À corriger','Urgents'],reset:'Réinitialiser cette semaine',
-        fields:[['who','Contrôle réalisé par','text','Nom'],['date','Date du contrôle','date'],['sent','Transmis à Inès le','date']],decision:false,word:'Contrôle hebdo'},
+        fields:[['who','Contrôle réalisé par','text','Nom'],['date','Date du contrôle','date'],['sent','Transmis à Inès le','date']],decision:false,word:'Contrôle hebdo',
+        poles:[['Direction',[0,12]],['Réception & relation client',[1,9]],['Beauté & bien-être',[2,3,4]],['Animation',[8]],['Cuisine, pâtisserie & bar',[6,7]],['Hygiène, entretien & technique',[10,5,11]]]},
 };
 for(const k in CL){const c=CL[k];c.total=c.sections.reduce((a,s)=>a+s[1].length,0);c.zkey=c.sections.map(s=>k+'-'+s[0].replace(/[^A-Za-zÀ-ÿ0-9]+/g,'_').slice(0,30));c.base=[];let b=0;c.sections.forEach(s=>{c.base.push(b);b+=s[1].length})}
 const SECTOR_TABS=new Set(['hebdo']);
+function poleState(k,pi){const c=CL[k];const t={ok:0,fix:0,urg:0,na:0,n:0,done:0};for(const zi of c.poles[pi][1]){const z=zoneState(k,zi);for(const q in t)t[q]+=z[q]}return t}
 let secSel={};
 const isCL=k=>k in CL;
 const itemText=(k,zi,i)=>{const it=CL[k].sections[zi][1][i];return typeof it==='string'?it:it[1]};
@@ -640,9 +642,10 @@ function renderZones(){
   const k=curCL(),c=CL[k];
   if(SECTOR_TABS.has(k)){
     const cur=secSel[k]??0;
-    $('#sectabs').innerHTML=c.sections.map((sec,zi)=>{const z=zoneState(k,zi);const dot=z.urg?'urg':z.fix?'fix':z.done===z.n?'ok':z.done?'part':'';
-      return `<button role="tab" data-sec="${zi}" aria-selected="${zi===cur}"><span class="dot ${dot}"></span>${esc(sec[0])}<span class="n num">${z.done}/${z.n}</span></button>`}).join('');
-    $('#secnav').innerHTML=`<button data-secnav="-1" ${cur===0?'disabled':''}>‹ ${cur>0?esc(c.sections[cur-1][0]):''}</button><button data-secnav="1" ${cur>=c.sections.length-1?'disabled':''}>${cur<c.sections.length-1?esc(c.sections[cur+1][0]):''} ›</button>`;
+    const groups=c.poles?c.poles.map((p,pi)=>[p[0],poleState(k,pi)]):c.sections.map((sec,zi)=>[sec[0],zoneState(k,zi)]);
+    $('#sectabs').innerHTML=groups.map(([name,z],i)=>{const dot=z.urg?'urg':z.fix?'fix':z.done===z.n?'ok':z.done?'part':'';
+      return `<button role="tab" data-sec="${i}" aria-selected="${i===cur}"><span class="dot ${dot}"></span>${esc(name)}<span class="n num">${z.done}/${z.n}</span></button>`}).join('');
+    $('#secnav').innerHTML=`<button data-secnav="-1" ${cur===0?'disabled':''}>‹ ${cur>0?esc(groups[cur-1][0]):''}</button><button data-secnav="1" ${cur>=groups.length-1?'disabled':''}>${cur<groups.length-1?esc(groups[cur+1][0]):''} ›</button>`;
     const act=$('#sectabs button[aria-selected=true]');act&&act.scrollIntoView({block:'nearest',inline:'center'});
   }
   $('#zones').innerHTML=c.sections.map((sec,zi)=>{const z=zoneState(k,zi);const dot=z.urg?'urg':z.fix?'fix':z.done===z.n?'ok':z.done?'part':'';
@@ -652,8 +655,9 @@ function matches(it,text){if(query&&!text.toLowerCase().includes(query))return f
 function renderList(){
   const k=curCL(),c=CL[k],items=itemsOf(k);let html='';
   const secMode=SECTOR_TABS.has(k),cur=secSel[k]??0;
-  c.sections.forEach((sec,zi)=>{
-    if(secMode&&zi!==cur&&!query&&!filter)return;
+  const order=(secMode&&c.poles&&!query&&!filter)?c.poles[cur][1]:c.sections.map((_,i)=>i);
+  order.forEach(zi=>{const sec=c.sections[zi];
+    if(secMode&&!query&&!filter){const vis=c.poles?c.poles[cur][1].includes(zi):zi===cur;if(!vis)return}
     const z=zoneState(k,zi);const rows=[];
     sec[1].forEach((_,i)=>{
       const gi=z.base+i,it=items[gi]||{},text=itemText(k,zi,i),cid=itemId(k,zi,i),ztag=itemZone(k,zi,i);
@@ -727,7 +731,7 @@ $('#list').addEventListener('input',e=>{
 $('#list').addEventListener('change',e=>{if(e.target.dataset.f&&e.target.dataset.f!=='rc')render()});
 $('#zones').addEventListener('click',e=>{const a=e.target.closest('a');if(!a)return;open.add(+a.dataset.z);renderList();for(const x of document.querySelectorAll('nav.zones a'))x.classList.toggle('active',x===a)});
 $('#sectabs').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;secSel[curCL()]=+b.dataset.sec;renderZones();renderList();window.scrollTo({top:0})});
-$('#secnav').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const k=curCL();secSel[k]=Math.max(0,Math.min(CL[k].sections.length-1,(secSel[k]??0)+ +b.dataset.secnav));renderZones();renderList();window.scrollTo({top:0})});
+$('#secnav').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const k=curCL();secSel[k]=Math.max(0,Math.min((CL[k].poles||CL[k].sections).length-1,(secSel[k]??0)+ +b.dataset.secnav));renderZones();renderList();window.scrollTo({top:0})});
 $('#expandAll').onclick=()=>{CL[curCL()].sections.forEach((_,i)=>open.add(i));renderList()};
 $('#collapseAll').onclick=()=>{open.clear();renderList()};
 $('#helpBtn').onclick=()=>{const h=$('#help');h.hidden=!h.hidden;$('#helpBtn').setAttribute('aria-pressed',!h.hidden)};
