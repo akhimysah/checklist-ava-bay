@@ -315,6 +315,9 @@ table.ca tr.total td{padding:9px 8px;font-weight:700;border-top:2px solid var(--
 .tsec>h4 .n{color:var(--ink-2)}
 .tsec .add{font-size:13px;font-weight:700;color:var(--pole);text-align:left;padding:8px 0}
 /* clients */
+.multi{display:flex;flex-wrap:wrap;gap:6px;padding-top:2px}
+.multi button{font-size:12.5px;font-weight:500;padding:6px 11px;border-radius:999px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink-2);text-transform:none;letter-spacing:0;font-family:var(--fb)}
+.multi button[aria-pressed=true]{background:var(--pole);border-color:var(--pole);color:var(--pole-ink)}
 .cc{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 40px 12px 14px;position:relative;border-left:4px solid var(--line);box-shadow:var(--shadow)}
 .cc.vip{border-left-color:var(--fix)}
 .cc .del{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:8px;color:var(--ink-3);display:grid;place-items:center}
@@ -578,7 +581,7 @@ function renderHome(){
     ['dir','brief','Briefing','Matin',R.brief.length?'done':'',R.brief.length?`${R.brief.length} responsable${R.brief.length>1?'s':''}`:'À faire'],
     ['dir','equipe','Pointage équipe','Matin',R.staff.length?'done':'',R.staff.length?`${R.staff.filter(r=>r.present).length} présents`:'À faire'],
     ['dir','journee','Contrôles 10h30 · 14h30 · 17h30','Journée',slots.length===3?'done':slots.length?'warn':'',slots.length?`${slots.length}/3 tours`:'À faire'],
-    ['rec','clients','Retours clients','Journée',R.client.length?'done':'',R.client.length?`${R.client.length} retour${R.client.length>1?'s':''}`:'Aucun'],
+    ['rec','clients','Fiches clientes','Journée',R.client.length?'done':'',R.client.length?`${R.client.length} cliente${R.client.length>1?'s':''}`:'Aucune'],
     ['dir','ferm','Fermeture','Soir',fe.done===fe.n?(fe.urg?'warn':'done'):'',fe.done?`${fe.done}/${fe.n}`:'À faire'],
     ['dir','bilan','Bilan → Inès','Soir',state.bilan.sent?'done':'',state.bilan.sent?`Envoyé ${state.bilan.sent}`:'À faire'],
   ];
@@ -598,7 +601,7 @@ function renderPole(){
   const p=POLE[view.id];const subs=subsFor(p.id);
   const gp=p.id==='dir'?null:p.id;const o=sumStats([poleStats('open',gp),poleStats('assia',gp)]);const f=poleStats('ferm',gp);const w=poleStats('hebdo',gp);
   const acts=suivi.rows.filter(r=>r.st!=='done'&&(!gp||actPole(r)===gp)).length;
-  const counts={ouv:`${o.done}/${o.n}`,ferm:`${f.done}/${f.n}`,hebdo:`${w.done}/${w.n}`,actions:acts||'',clients:state.regs.client.length||'',stock:state.regs.stock.length||'',tech:state.regs.tech.filter(r=>!r.rc).length||'',brief:state.regs.brief.length||'',journee:state.regs.ctrl.length||''};
+  const counts={clients:state.regs.client.length||'',ouv:`${o.done}/${o.n}`,ferm:`${f.done}/${f.n}`,hebdo:`${w.done}/${w.n}`,actions:acts||'',clients:state.regs.client.length||'',stock:state.regs.stock.length||'',tech:state.regs.tech.filter(r=>!r.rc).length||'',brief:state.regs.brief.length||'',journee:state.regs.ctrl.length||''};
   const dots={ouv:o.urg,ferm:f.urg,hebdo:w.urg,tech:state.regs.tech.some(r=>r.grav==='urg'&&!r.rc)};
   const global=p.id==='dir';
   let body='';
@@ -711,16 +714,18 @@ function renderRapports(){
 }
 
 /* ---------- registres ---------- */
+const PRESTAS=['Entrée & piscine','Spa / massage','Hammam','Gommage','Coiffure','Brushing','Manucure','Pédicure','Restaurant','Bar','Coworking','Kids','Événement'];
 const ST3=[['','—'],['ok','OK'],['fix','À corriger'],['urg','Urgent']];
 const REGS={
   tech:{title:'Registre des pannes et problèmes techniques',intro:'Chaque anomalie constatée, qui la traite et quand elle a été recontrôlée.',cols:[['h','Heure','time'],['zone','Zone','zone'],['type','Type','text','Électricité, plomberie, clim…'],['pb','Problème constaté','text','',true],['grav','Gravité','select',[['','—'],['ok','Mineur'],['fix','Moyen'],['urg','Bloquant']]],['tech','Technicien / responsable','text'],['action','Action réalisée','text','',true],['rc','Heure recontrôle','time']],sev:r=>r.grav},
   stock:{title:'Contrôle stock du matin',intro:"Stock théorique vs réel par produit ; l'écart se calcule tout seul.",cols:[['dep','Département','text','Cuisine, bar, pâtisserie…'],['prod','Produit','text'],['unit','Unité','text','kg, L, pièces'],['theo','Stock théorique','number'],['reel','Stock réel','number'],['ecart','Écart','calc'],['seuil','Seuil minimum','number'],['act','Commande / action','text','',true]],sev:r=>{const t=+r.theo,re=+r.reel,se=+r.seuil;if(r.reel!==undefined&&r.reel!==''&&r.seuil!==''&&r.seuil!==undefined&&re<se)return 'urg';if(r.theo!==''&&r.reel!==''&&r.theo!==undefined&&r.reel!==undefined&&re!==t)return 'fix';return ''}},
   brief:{title:'Briefing des responsables',intro:'Un responsable par ligne : présence, briefing fait, priorité du jour.',cols:[['resp','Responsable / service','text'],['presence','Présence confirmée','check'],['fait','Briefing fait','check'],['prio','Priorité du jour','text','',true],['obs','Observation / problème à suivre','text','',true]],sev:r=>r.presence===false?'urg':(r.presence&&r.fait)?'ok':''},
   ctrl:{title:'Contrôles 10h30 / 14h30 / 17h30',intro:'Tour de contrôle en journée, zone par zone.',cols:[['h','Heure','select',[['','—'],['10:30','10h30'],['14:30','14h30'],['17:30','17h30']]],['zone','Zone','zone'],['perso','Personnel / présence','st3'],['prop','Propreté','st3'],['stock','Stock','st3'],['techn','Technique','st3'],['exp','Expérience client','st3'],['obs','Observations / actions','text','',true]],sev:r=>['perso','prop','stock','techn','exp'].some(k=>r[k]==='urg')?'urg':['perso','prop','stock','techn','exp'].some(k=>r[k]==='fix')?'fix':['perso','prop','stock','techn','exp'].every(k=>r[k]==='ok')?'ok':''},
-  client:{title:'Retours clients du jour',intro:'Réclamations, compliments, demandes et incidents, avec la réponse apportée.',cols:[['h','Heure','time'],['nom','Cliente','client','Nom'],['sect','Secteur','zone'],['type','Type','select',[['','—'],['recl','Réclamation'],['comp','Compliment'],['dem','Demande particulière'],['inc','Incident'],['avis','Avis en ligne']]],['motif','Motif / détail','text','',true],['rep','Réponse apportée','text','',true],['geste','Geste commercial','text','Offert, remise, invitation…'],['resp','Traité par','text'],['suivi','Suivi nécessaire','check'],['st','Statut','select',[['open','À traiter'],['done','Traité']]]],sev:r=>r.type==='inc'?(r.st==='done'?'fix':'urg'):r.type==='recl'||r.type==='avis'?(r.st==='done'?'ok':'fix'):r.type==='comp'?'ok':''},
+  client:{title:'Fiches clientes du jour',intro:'Une fiche par cliente passée aujourd\'hui : ce qu\'elle a fait, et son retour éventuel.',cols:[['h','Arrivée','time'],['nom','Cliente','client','Nom'],['dep','Départ','time'],['presta','Ce qu\'elle a fait dans la journée','multi',PRESTAS],['montant','Dépense (DH)','number'],['acc','Accompagnée de','text','Amies, enfants…'],['type','Retour','select',[['','Aucun retour'],['comp','Compliment'],['recl','Réclamation'],['dem','Demande particulière'],['inc','Incident'],['avis','Avis en ligne']]],['motif','Détail du retour','text','',true],['rep','Réponse apportée','text','',true],['geste','Geste commercial','text','Offert, remise, invitation…'],['resp','Suivi par','text'],['st','Statut','select',[['open','À traiter'],['done','Traité']]]],sev:r=>r.type==='inc'?(r.st==='done'?'fix':'urg'):r.type==='recl'||r.type==='avis'?(r.st==='done'?'ok':'fix'):r.type==='comp'?'ok':''},
 };
 function fieldHtml(c,r){
   const [k,lbl,type,extra,wide]=c;const v=r[k]??'';const size=wide?'wide':(type==='time'||type==='number'||type==='calc'||type==='select'||type==='date')?'s':type==='st3'?'m':'';const cls=size?` class="${size}"`:'';
+  if(type==='multi'){const arr=Array.isArray(v)?v:[];return `<label class="wide">${lbl}<div class="multi">${extra.map(o=>`<button type="button" data-mk="${k}" data-mv="${esc(o)}" aria-pressed="${arr.includes(o)}">${esc(o)}</button>`).join('')}</div></label>`}
   if(type==='check')return `<label class="chk"><input type="checkbox" data-k="${k}" ${v===true?'checked':''}>${lbl}</label>`;
   if(type==='calc'){const t=r.theo,re=r.reel;let txt='—',cl='';if(t!==''&&re!==''&&t!==undefined&&re!==undefined){const e=+re-+t;txt=(e>0?'+':'')+e;cl=e<0?'neg':'';if(r.seuil!==''&&r.seuil!==undefined&&+re<+r.seuil)cl='neg'}return `<label${cls}>${lbl}<span class="calc num ${cl}">${txt}</span></label>`}
   if(type==='select'||type==='st3'){const opts=type==='st3'?ST3:extra;return `<label${cls}>${lbl}<select data-k="${k}" class="${type==='st3'?'st v-'+v:''}">${opts.map(o=>`<option value="${o[0]}" ${o[0]===v?'selected':''}>${o[1]}</option>`).join('')}</select></label>`}
@@ -785,7 +790,7 @@ function nextN(date){return suivi.rows.filter(r=>r.date===date).reduce((m,r)=>Ma
 
 /* ---------- clientes ---------- */
 const CTYPE={recl:['Réclamation','fix'],comp:['Compliment','ok'],dem:['Demande',''],inc:['Incident','urg'],avis:['Avis en ligne','fix']};
-function clientHistory(name){if(!name)return [];const n=name.trim().toLowerCase();const out=[];try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(!k.startsWith('ava-checklist:'))continue;const st=JSON.parse(localStorage.getItem(k));(st.regs?.client||[]).forEach(r=>{if((r.nom||'').trim().toLowerCase()===n)out.push({date:k.slice(14),type:r.type,motif:r.motif})})}}catch(e){}return out.sort((a,b)=>b.date.localeCompare(a.date)).slice(0,5)}
+function clientHistory(name){if(!name)return [];const n=name.trim().toLowerCase();const out=[];try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(!k.startsWith('ava-checklist:'))continue;const st=JSON.parse(localStorage.getItem(k));(st.regs?.client||[]).forEach(r=>{if((r.nom||'').trim().toLowerCase()===n)out.push({date:k.slice(14),type:r.type,motif:r.motif,presta:r.presta||[],montant:r.montant})})}}catch(e){}return out.sort((a,b)=>b.date.localeCompare(a.date)).slice(0,5)}
 function renderClients(){
   const q=clientQ.toLowerCase();const rows=clients.rows.filter(c=>!q||[c.nom,c.tel,c.email,c.pref,c.notes].join(' ').toLowerCase().includes(q)).sort((a,b)=>(b.vip?1:0)-(a.vip?1:0)||(a.nom||'').localeCompare(b.nom||''));
   const vip=clients.rows.filter(c=>c.vip).length;
@@ -793,7 +798,7 @@ function renderClients(){
     <div class="rows">${rows.length?rows.map(c=>{const h=clientHistory(c.nom);return `<div class="cc ${c.vip?'vip':''}" data-cid="${c.id}"><div class="fields">
       <label class="m">Nom<input data-c="nom" value="${esc(c.nom||'')}" placeholder="Nom / prénom"></label><label class="m">Téléphone<input type="tel" data-c="tel" value="${esc(c.tel||'')}"></label><label class="m">E-mail<input type="email" data-c="email" value="${esc(c.email||'')}"></label><label class="chk"><input type="checkbox" data-c="vip" ${c.vip?'checked':''}>VIP / habituée</label>
       <label class="wide">Préférences, allergies, habitudes<input data-c="pref" value="${esc(c.pref||'')}" placeholder="Soin préféré, table habituelle, allergie…"></label><label class="wide">Notes<input data-c="notes" value="${esc(c.notes||'')}" placeholder="Anniversaire, enfants, remarques…"></label>
-      ${h.length?`<div class="hist">Historique :${h.map(x=>`<span class="chip ${CTYPE[x.type]?.[1]||''}">${fmtDate(x.date)} · ${CTYPE[x.type]?.[0]||'Retour'}${x.motif?' — '+esc(x.motif.slice(0,40)):''}</span>`).join('')}</div>`:''}</div>
+      ${h.length?`<div class="hist">Visites :${h.map(x=>`<span class="chip ${x.type?(CTYPE[x.type]?.[1]||''):''}">${fmtDate(x.date)} · ${x.presta.length?esc(x.presta.join(', ')):'visite'}${x.montant?' · '+esc(x.montant)+' DH':''}${x.type?' · '+(CTYPE[x.type]?.[0]||'Retour'):''}${x.motif?' — '+esc(x.motif.slice(0,40)):''}</span>`).join('')}</div>`:''}</div>
       <button class="del" data-delclient="${c.id}" aria-label="Supprimer">×</button></div>`}).join(''):`<div class="empty">${q?'Aucune cliente ne correspond.':'Aucune fiche cliente pour le moment.'}</div>`}</div></div>`;
 }
 
@@ -862,6 +867,7 @@ V.addEventListener('click',e=>{
   // registres
   const reg=b.closest('[data-reg]');
   if(reg&&D.add!==undefined){const key=reg.dataset.reg;const r={id:uid()};if(key==='ctrl'){const h=new Date().getHours();r.h=h<13?'10:30':h<16?'14:30':'17:30'}if(key==='client')r.st='open';state.regs[key].push(r);persist();render();const last=V.querySelector(`[data-reg="${key}"] .row:last-child input,[data-reg="${key}"] .row:last-child select`);last&&last.focus();return}
+  if(reg&&D.mk){const key=reg.dataset.reg;const row=state.regs[key].find(r=>r.id===b.closest('.row').dataset.id);if(!row)return;const arr=Array.isArray(row[D.mk])?row[D.mk]:[];row[D.mk]=arr.includes(D.mv)?arr.filter(x=>x!==D.mv):[...arr,D.mv];persist();b.setAttribute('aria-pressed',row[D.mk].includes(D.mv));return}
   if(reg&&D.del){if(!b.classList.contains('confirm')){b.classList.add('confirm');b.textContent='Supprimer ?';setTimeout(()=>{b.classList.remove('confirm');b.textContent='×'},2500);return}const key=reg.dataset.reg;state.regs[key]=state.regs[key].filter(r=>r.id!==D.del);persist();render();return}
   if(D.importTech){const [k,g]=D.importTech.split(':'),gi=+g,it=itemsOf(k)[gi],[zi,i]=locate(k,gi);state.regs.tech.push({id:uid(),src:D.importTech,h:it.h||'',zone:nice(CL[k].sections[zi][0]),pb:itemText(k,zi,i)+(it.o?' — '+it.o:''),grav:it.s,tech:it.r||'',action:it.a||'',rc:'',photo:it.photo||null});persist();render();return}
   if(D.loadbrief!==undefined){const have=new Set(state.regs.brief.map(r=>r.resp));team.rows.filter(m=>/responsable|direct|chef|référente|fondat/i.test(m.fonction||'')).forEach(m=>{const n=fullName(m);if(n&&!have.has(n))state.regs.brief.push({id:uid(),resp:n+' · '+m.sec})});persist();render();return}
