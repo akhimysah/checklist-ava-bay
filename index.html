@@ -65,7 +65,7 @@ img{max-width:100%}
 
 /* ---------- layout ---------- */
 .wrap{max-width:1120px;margin:0 auto;padding:18px 16px 40px;display:grid;gap:18px}
-@media(max-width:700px){body{padding-bottom:calc(66px + env(safe-area-inset-bottom,0px))}.wrap{padding-top:14px;gap:14px}}
+@media(max-width:700px){body{padding-bottom:calc(84px + env(safe-area-inset-bottom,0px))}.wrap{padding-top:14px;gap:14px}.fnav{position:sticky;bottom:calc(74px + env(safe-area-inset-bottom,0px));z-index:5;background:var(--surface);padding:10px 12px;margin:0 -16px -16px;border-top:1px solid var(--line);border-radius:0 0 var(--r) var(--r)}.fnav .addbtn{flex:1;text-align:center;justify-content:center;padding:13px 16px;font-size:14px}}
 
 /* ---------- home ---------- */
 .hero{display:grid;grid-template-columns:auto 1fr;gap:6px 22px;align-items:end;padding:6px 0 4px}
@@ -895,7 +895,7 @@ function renderFicheBuilder(f){
     const sel=new Set(steps.map(x=>x.act));
     body=`<div class="card welcome"><h3 class="big">Préparons ensemble votre journée chez AVA BAY</h3><p>Sélectionnez vos envies, nous organisons votre parcours.</p></div>
       <div class="zones">${ZONES.map((z,i)=>`<div class="zc" style="--pole:${z.color};--pole-soft:${z.soft}"><div class="zh"><span class="ic">${z.icon}</span><div><div class="zn">Zone ${i+1}</div><h3>${z.name}</h3></div></div><div class="multi">${z.acts.map(a=>`<button type="button" data-act="${esc(a)}" data-zone="${z.id}" aria-pressed="${sel.has(a)}">${esc(a)}</button>`).join('')}</div></div>`).join('')}</div>
-      <div class="fnav"><button class="pill" data-fstep="1">‹ Informations</button><span class="note">${steps.length} envie${steps.length>1?'s':''} sélectionnée${steps.length>1?'s':''}</span><button class="addbtn" data-fstep="3" ${steps.length?'':'disabled'}>Continuer mon parcours →</button></div>`;
+      <div class="fnav"><button class="pill" data-fstep="1">‹ Informations</button><span class="note">${steps.length} envie${steps.length>1?'s':''} sélectionnée${steps.length>1?'s':''}</span><button class="addbtn" data-fstep="3">Continuer mon parcours →</button></div>`;
   }else{
     const ordered=steps.slice().sort((a,b)=>(a.time||'99').localeCompare(b.time||'99'));
     const allOk=steps.length&&steps.every(x=>x.time&&x.ok);
@@ -1021,7 +1021,7 @@ V.addEventListener('click',e=>{
   if(D.newfiche!==undefined){const f={id:uid(),h:new Date().toTimeString().slice(0,5),steps:[],st:'open'};state.regs.client.push(f);fiche=f.id;ficheStep=1;persist();render();const i=V.querySelector('input[data-fk=prenom]');i&&i.focus();return}
   if(D.openfiche){fiche=D.openfiche;const f=fichesToday().find(r=>r.id===fiche);ficheStep=f.sentAt||ficheSteps(f).length?3:1;ficheIntern=false;render();return}
   if(D.closefiche!==undefined){fiche=null;render();return}
-  if(D.fstep){ficheStep=+D.fstep;render();window.scrollTo({top:0});return}
+  if(D.fstep){const f=fichesToday().find(r=>r.id===fiche);if(+D.fstep===3&&f&&!ficheSteps(f).length){const n=b.closest('.fnav').querySelector('.note');if(n){n.textContent='Sélectionne au moins une envie ci-dessus';n.style.color='var(--urg)'}return}ficheStep=+D.fstep;render();window.scrollTo({top:0});return}
   if(D.venue){const f=fichesToday().find(r=>r.id===fiche);f.venue=f.venue===D.venue?'':D.venue;persist();render();return}
   if(D.act){const f=fichesToday().find(r=>r.id===fiche);const st=ficheSteps(f);const i=st.findIndex(x=>x.act===D.act);if(i>=0)st.splice(i,1);else st.push({id:uid(),zone:D.zone,act:D.act,time:'',dispo:'',ok:false});f.presta=st.map(x=>x.act);persist();render();return}
   if(D.dispo){const f=fichesToday().find(r=>r.id===fiche);const x=ficheSteps(f).find(x=>x.id===b.closest('.pstep').dataset.sid);x.dispo=x.dispo===D.dispo?'':D.dispo;if(x.dispo==='no')x.ok=false;persist();render();return}
