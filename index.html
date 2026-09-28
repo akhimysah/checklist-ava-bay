@@ -1039,6 +1039,9 @@ V.addEventListener('click',e=>{
   if(t.closest('[data-home]')){go({type:'home'});return}
   const st=t.closest('#subtabs button');if(st){view.sub=st.dataset.sub;filter=null;query='';render();return}
   const lb=t.closest('img[data-lb]');if(lb){const d=document.createElement('div');d.className='lb';d.innerHTML=`<img src="${lb.getAttribute('src')}" alt="">`;d.onclick=()=>d.remove();document.body.appendChild(d);return}
+  if(t.closest('[data-stop]'))return;
+  const oc=t.closest('[data-opencl]');if(oc&&!b){clientOpen=clientOpen===oc.dataset.opencl?null:oc.dataset.opencl;render();return}
+  const of=t.closest('[data-openfiche]');if(of&&!b){fiche=of.dataset.openfiche;const f=fichesToday().find(r=>r.id===fiche);ficheStep=f.sentAt||ficheSteps(f).length?3:1;ficheIntern=false;render();return}
   if(!b){const h=t.closest('header[data-fold]');if(h&&!t.closest('button')){const k=h.dataset.fold;open.has(k)?open.delete(k):open.add(k);render()}return}
   const D=b.dataset;
   if(D.filter){filter=filter===D.filter?null:D.filter;render();return}
@@ -1072,9 +1075,6 @@ V.addEventListener('click',e=>{
   if(D.delact){if(!b.classList.contains('confirm')){b.classList.add('confirm');b.textContent='Confirmer la suppression';setTimeout(()=>{b.classList.remove('confirm');b.textContent='Supprimer'},3000);return}suivi.rows=suivi.rows.filter(r=>r.id!==D.delact);persistSuivi();render();return}
   // fiches clientes
   if(D.newfiche!==undefined){const f={id:uid(),h:new Date().toTimeString().slice(0,5),steps:[],st:'open'};state.regs.client.push(f);fiche=f.id;ficheStep=1;persist();render();const i=V.querySelector('input[data-fk=prenom]');i&&i.focus();return}
-  if(t.closest('[data-stop]'))return;
-  const oc=t.closest('[data-opencl]');if(oc&&!b){clientOpen=clientOpen===oc.dataset.opencl?null:oc.dataset.opencl;render();return}
-  const of=t.closest('[data-openfiche]');if(of&&!b){fiche=of.dataset.openfiche;const f=fichesToday().find(r=>r.id===fiche);ficheStep=f.sentAt||ficheSteps(f).length?3:1;ficheIntern=false;render();return}
   if(D.openfiche){fiche=D.openfiche;const f=fichesToday().find(r=>r.id===fiche);ficheStep=f.sentAt||ficheSteps(f).length?3:1;ficheIntern=false;render();return}
   if(D.closefiche!==undefined){fiche=null;render();return}
   if(D.fstep){const f=fichesToday().find(r=>r.id===fiche);if(+D.fstep===3&&f&&!ficheSteps(f).length){const n=b.closest('.fnav').querySelector('.note');if(n){n.textContent='Sélectionne au moins une envie ci-dessus';n.style.color='var(--urg)'}return}ficheStep=+D.fstep;render();window.scrollTo({top:0});return}
