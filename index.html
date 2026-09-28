@@ -474,6 +474,7 @@ const TEAM_DEFAULT=[["Direction générale","Inès","","Fondatrice"],["Direction
    ===================================================================== */
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const clone=o=>JSON.parse(JSON.stringify(o));
 const uid=()=>Math.random().toString(36).slice(2,9);
 const nice=t=>t.toLowerCase().replace(/(^|[\s\/—(–-])([a-zà-ÿ])/g,(m,a,b)=>a+b.toUpperCase()).replace(/\bDe\b/g,'de').replace(/\bDes\b/g,'des').replace(/\bDu\b/g,'du').replace(/\bEt\b/g,'et').replace(/\bEn\b/g,'en').replace(/\bAvant\b/g,'avant').replace(/\bMam\b/g,'MAM').replace(/\bRh\b/g,'RH').replace(/\bTpe\b/g,'TPE').replace(/\bL'([a-zà-ÿ])/gi,(m,c)=>"l'"+c.toUpperCase());
 function todayISO(){const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)}
@@ -579,10 +580,10 @@ function subscribeDay(){
   dbUnsub=db.collection('jours/jour-'+d+'/parts').onSnapshot(async qs=>{
     if(d!==day)return;
     let changed=false;
-    for(const doc of qs.docs){if(doc.metadata.hasPendingWrites)continue;const k=doc.id;if(!PARTS.includes(k))continue;const data=doc.data();delete data.date;delete data.part;delete data.updatedAt;const j=JSON.stringify(data);if(j===lastWritten[k])continue;partSet(k,data);lastWritten[k]=JSON.stringify(partGet(k));changed=true}
+    for(const doc of qs.docs){if(doc.metadata.hasPendingWrites)continue;const k=doc.id;if(!PARTS.includes(k))continue;const data=clone(doc.data());delete data.date;delete data.part;delete data.updatedAt;const j=JSON.stringify(data);if(j===lastWritten[k])continue;partSet(k,data);lastWritten[k]=JSON.stringify(partGet(k));changed=true}
     if(first){first=false;
       if(qs.empty){
-        try{const leg=await db.doc('jours/jour-'+d).get();if(leg.exists&&d===day&&!hasData(state)){state=norm(leg.data());changed=true}}catch(e){}
+        try{const leg=await db.doc('jours/jour-'+d).get();if(leg.exists&&d===day&&!hasData(state)){state=norm(clone(leg.data()));changed=true}}catch(e){}
         if(hasData(state)){dirty=true;flush()}
       }
     }
@@ -595,11 +596,11 @@ function loadWeek(){
   try{const j=localStorage.getItem('ava-week:'+wk);if(j){const o=JSON.parse(j);week={items:o.items||{},synth:o.synth||{}}}}catch(e){}
   if(weekUnsub){weekUnsub();weekUnsub=null}if(!db)return;
   weekUnsub=db.doc('semaines/'+wk).onSnapshot(snap=>{if(snap.metadata.hasPendingWrites)return;
-    if(snap.exists){const d=snap.data();const inc={items:d.items||{},synth:d.synth||{}};if(JSON.stringify(inc)!==JSON.stringify(week)){week=inc;saveLocal();render()}}else if(Object.keys(week.items).length){dirtyWeek=true;flush()}},e=>console.warn(e));
+    if(snap.exists){const d=clone(snap.data());const inc={items:d.items||{},synth:d.synth||{}};if(JSON.stringify(inc)!==JSON.stringify(week)){week=inc;saveLocal();render()}}else if(Object.keys(week.items).length){dirtyWeek=true;flush()}},e=>console.warn(e));
 }
 function subDoc(path,get,set,unsubRef){
   return db.doc(path).onSnapshot(snap=>{if(snap.metadata.hasPendingWrites)return;
-    if(snap.exists){const rows=snap.data().rows||[];if(JSON.stringify(rows)!==JSON.stringify(get().rows)){set({rows});saveLocal();render()}}else if(get().rows.length){unsubRef();flush()}},e=>console.warn(e));
+    if(snap.exists){const rows=clone(snap.data().rows||[]);if(JSON.stringify(rows)!==JSON.stringify(get().rows)){set({rows});saveLocal();render()}}else if(get().rows.length){unsubRef();flush()}},e=>console.warn(e));
 }
 function subscribeGlobals(){
   if(!db)return;
