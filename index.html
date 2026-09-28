@@ -909,7 +909,7 @@ function waPretty(tel){const d=waNumber(tel);if(!d)return '';if(d.startsWith('21
 function waLink(f){return `https://wa.me/${waNumber(f.tel)}?text=${encodeURIComponent(waMessage(f))}`}
 function upsertClient(f){const name=ficheName(f);if(!name||name==='Cliente')return;const key=(f.tel||'').replace(/\D/g,'');let c=clients.rows.find(x=>(key&&(x.tel||'').replace(/\D/g,'')===key)||(x.nom||'').trim().toLowerCase()===name.toLowerCase());
   if(!c){c={id:uid(),nom:name,tel:f.tel||'',email:f.email||'',pref:'',notes:'',vip:false};clients.rows.unshift(c)}else{if(f.tel&&!c.tel)c.tel=f.tel;if(f.email&&!c.email)c.email=f.email;if(!c.nom)c.nom=name}
-  if(f.social)c.social=f.social;
+  if(f.social)c.social=f.social;if(f.bday)c.bday=f.bday;
   const acts=ficheSteps(f).slice().sort((a,b)=>(a.time||'').localeCompare(b.time||'')).map(x=>(x.time?x.time.replace(':','h')+' ':'')+x.act);
   c.visits=(c.visits||[]).filter(v=>v.fid!==f.id);c.visits.push({fid:f.id,date:day,acts,montant:f.montant||'',type:f.type||'',motif:f.motif||'',venue:f.venue||''});
   c.visits.sort((a,b)=>b.date.localeCompare(a.date));persistClients()}
@@ -940,6 +940,7 @@ function renderFicheBuilder(f){
       <label class="m">E-mail<input type="email" data-fk="email" value="${esc(f.email||'')}"></label>
       <label class="h">Instagram ou TikTok <span style="font-weight:400;text-transform:none;letter-spacing:0">(facultatif)</span><input data-fk="social" value="${esc(f.social||'')}" placeholder="@…"></label>
       <label class="s">Heure d'arrivée<input type="time" data-fk="h" value="${esc(f.h||'')}"></label>
+      <label class="m">Date d'anniversaire<input type="date" data-fk="bday" value="${esc(f.bday||'')}"></label>
       <label class="wide">Elle est venue<div class="multi">${VENUES.map(([v,l])=>`<button type="button" data-venue="${v}" aria-pressed="${f.venue===v}">${l}</button>`).join('')}</div></label></div>
       <div class="fnav"><span></span><button class="addbtn" data-fstep="2">Préparer sa journée →</button></div></div>`;
   }else if(ficheStep===2){
@@ -1105,7 +1106,7 @@ V.addEventListener('click',e=>{
   if(D.addclient!==undefined){const c={id:uid(),nom:'',tel:'',email:'',pref:'',notes:'',vip:false,visits:[]};clients.rows.unshift(c);clientOpen=c.id;clientFilter='all';clientQ='';persistClients();render();const f=V.querySelector('.ce input');f&&f.focus();return}
   if(D.cf){clientFilter=D.cf;render();return}
   if(D.closecl!==undefined){clientOpen=null;render();return}
-  if(D.newfrom){const c=clients.rows.find(x=>x.id===D.newfrom);const parts=(c.nom||'').trim().split(' ');const f={id:uid(),h:new Date().toTimeString().slice(0,5),steps:[],st:'open',prenom:parts[0]||'',nom:parts.slice(1).join(' '),tel:c.tel||'',email:c.email||'',social:c.social||''};f.nomComplet=ficheName(f);state.regs.client.push(f);persist();view.sub='clients';fiche=f.id;ficheStep=2;render();return}
+  if(D.newfrom){const c=clients.rows.find(x=>x.id===D.newfrom);const parts=(c.nom||'').trim().split(' ');const f={id:uid(),h:new Date().toTimeString().slice(0,5),steps:[],st:'open',prenom:parts[0]||'',nom:parts.slice(1).join(' '),tel:c.tel||'',email:c.email||'',social:c.social||'',bday:c.bday||''};f.nomComplet=ficheName(f);state.regs.client.push(f);persist();view.sub='clients';fiche=f.id;ficheStep=2;render();return}
   if(D.delclient){if(!b.classList.contains('confirm')){b.classList.add('confirm');b.textContent='Confirmer la suppression';setTimeout(()=>{b.classList.remove('confirm');b.textContent='Supprimer la cliente'},3000);return}clients.rows=clients.rows.filter(c=>c.id!==D.delclient);clientOpen=null;persistClients();render();return}
 });
 V.addEventListener('click',e=>{const wa=e.target.closest('a[data-sendwa]');if(wa){if(wa.dataset.sendwa!=='1'){e.preventDefault();const h=$('#waHint');if(h){h.hidden=false;h.style.color='var(--urg)';h.style.fontWeight='600'}return}const f=fichesToday().find(r=>r.id===fiche);wa.setAttribute('href',waLink(f));f.saved=true;f.sentAt=new Date().toTimeString().slice(0,5);upsertClient(f);persist();setTimeout(render,300);return}const sm=e.target.closest('.a .sum');if(sm&&!e.target.closest('select')){const id=sm.dataset.open;suiviOpen.has(id)?suiviOpen.delete(id):suiviOpen.add(id);render()}});
