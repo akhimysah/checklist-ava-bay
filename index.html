@@ -34,7 +34,7 @@
 }
 *{box-sizing:border-box}
 [hidden]{display:none!important}
-html,body{height:100%}
+html{height:100%}body{min-height:100%}
 body{margin:0;background:var(--bg);color:var(--ink);font:var(--fs)/1.45 var(--fb);-webkit-font-smoothing:antialiased}
 h1,h2,h3,h4{font-family:var(--fd);margin:0;text-wrap:pretty;letter-spacing:0;font-weight:600}
 button{font:inherit;color:inherit;cursor:pointer;background:none;border:0;padding:0}
@@ -65,7 +65,7 @@ img{max-width:100%}
 
 /* ---------- layout ---------- */
 .wrap{max-width:1120px;margin:0 auto;padding:18px 16px 40px;display:grid;gap:18px}
-@media(max-width:700px){body{padding-bottom:calc(84px + env(safe-area-inset-bottom,0px))}.wrap{padding-top:14px;gap:14px}.fnav{position:sticky;bottom:calc(74px + env(safe-area-inset-bottom,0px));z-index:5;background:var(--surface);padding:10px 12px;margin:0 -16px -16px;border-top:1px solid var(--line);border-radius:0 0 var(--r) var(--r)}.fnav .addbtn{flex:1;text-align:center;justify-content:center;padding:13px 16px;font-size:14px}}
+@media(max-width:700px){body{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))}.wrap{padding-top:14px;gap:14px}.fnav{position:sticky;bottom:calc(74px + env(safe-area-inset-bottom,0px));z-index:5;background:var(--surface);padding:10px 12px;margin:0 -16px -16px;border-top:1px solid var(--line);border-radius:0 0 var(--r) var(--r)}.fnav .addbtn{flex:1;text-align:center;justify-content:center;padding:13px 16px;font-size:14px}}
 
 /* ---------- home ---------- */
 .hero{display:grid;grid-template-columns:auto 1fr;gap:6px 22px;align-items:end;padding:6px 0 4px}
