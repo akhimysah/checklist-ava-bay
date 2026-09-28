@@ -542,6 +542,10 @@ let photos={};try{photos=JSON.parse(localStorage.getItem('ava-photos')||'{}')}ca
 
 function blank(){return {items:{},synth:{dec:'',tech:'',hour:'',sig:'',notes:''},cl:{assia:{items:{},synth:{}},ferm:{items:{},synth:{}}},regs:{tech:[],stock:[],staff:[],brief:[],ctrl:[],client:[]},bilan:{ca:{},rh:{},cx:{},inc:{},syn:{},sent:''}}}
 function norm(o){const b=blank();o=o||{};return {items:o.items||{},synth:Object.assign(b.synth,o.synth||{}),cl:{assia:{items:o.cl?.assia?.items||{},synth:o.cl?.assia?.synth||{}},ferm:{items:o.cl?.ferm?.items||{},synth:o.cl?.ferm?.synth||{}}},regs:Object.assign(b.regs,o.regs||{}),bilan:Object.assign(b.bilan,o.bilan||{})}}
+const PARTS=['open','assia','ferm','tech','stock','staff','brief','ctrl','client','bilan'];
+function partGet(k){if(k==='open')return {items:state.items,synth:state.synth};if(k==='assia'||k==='ferm')return state.cl[k];if(k==='bilan')return state.bilan;return {rows:state.regs[k]||[]}}
+function partSet(k,d){d=d||{};if(k==='open'){state.items=d.items||{};state.synth=Object.assign(blank().synth,d.synth||{})}else if(k==='assia'||k==='ferm'){state.cl[k]={items:d.items||{},synth:d.synth||{}}}else if(k==='bilan'){state.bilan=Object.assign(blank().bilan,d)}else{state.regs[k]=d.rows||[]}}
+let lastWritten={};
 function itemsOf(k){return k==='open'?state.items:k==='hebdo'?week.items:state.cl[k].items}
 function synthOf(k){return k==='open'?state.synth:k==='hebdo'?week.synth:state.cl[k].synth}
 function item(k,gi){const items=itemsOf(k);return items[gi]||(items[gi]={})}
@@ -560,7 +564,7 @@ function persistTeam(){saveLocal();if(!db)return;dirtyTeam=true;schedule()}
 function persistClients(){saveLocal();if(!db)return;dirtyClients=true;schedule()}
 function flush(){
   if(!db)return;const jobs=[];const stamp=o=>{o.updatedAt=new Date().toISOString();return o};
-  if(dirty){dirty=false;const d=day,body=stamp(JSON.parse(JSON.stringify(state)));body.date=d;jobs.push(()=>db.doc('jours/jour-'+d).set(body))}
+  if(dirty){dirty=false;const d=day;for(const k of PARTS){const j=JSON.stringify(partGet(k));if(lastWritten[k]===j)continue;lastWritten[k]=j;const body=stamp(JSON.parse(j));body.date=d;body.part=k;jobs.push(()=>db.doc('jours/jour-'+d+'/parts/'+k).set(body))}}
   if(dirtyWeek){dirtyWeek=false;const wk=curWeek,body=stamp(JSON.parse(JSON.stringify(week)));body.week=wk;jobs.push(()=>db.doc('semaines/'+wk).set(body))}
   if(dirtySuivi){dirtySuivi=false;jobs.push(()=>db.doc('suivi/actions').set(stamp(JSON.parse(JSON.stringify(suivi)))))}
   if(dirtyTeam){dirtyTeam=false;jobs.push(()=>db.doc('equipe/liste').set(stamp(JSON.parse(JSON.stringify(team)))))}
@@ -571,9 +575,20 @@ function flush(){
 function hasData(st){return Object.keys(st.items).length||Object.keys(st.cl.assia.items).length||Object.keys(st.cl.ferm.items).length||Object.values(st.regs).some(a=>a.length)||Object.keys(st.bilan.ca).length}
 function subscribeDay(){
   if(dbUnsub){dbUnsub();dbUnsub=null}if(!db)return;
-  dbUnsub=db.doc('jours/jour-'+day).onSnapshot(snap=>{if(snap.metadata.hasPendingWrites)return;
-    if(snap.exists){const inc=norm(snap.data());if(JSON.stringify(inc)!==JSON.stringify(state)){state=inc;saveLocal();render()}}else if(hasData(state)){dirty=true;flush()}
-    setSync('on','Synchronisé')},e=>{console.warn(e);setSync('','Hors ligne (local)')});
+  const d=day;lastWritten={};let first=true;
+  dbUnsub=db.collection('jours/jour-'+d+'/parts').onSnapshot(async qs=>{
+    if(d!==day)return;
+    let changed=false;
+    for(const doc of qs.docs){if(doc.metadata.hasPendingWrites)continue;const k=doc.id;if(!PARTS.includes(k))continue;const data=doc.data();delete data.date;delete data.part;delete data.updatedAt;const j=JSON.stringify(data);if(j===lastWritten[k])continue;partSet(k,data);lastWritten[k]=JSON.stringify(partGet(k));changed=true}
+    if(first){first=false;
+      if(qs.empty){
+        try{const leg=await db.doc('jours/jour-'+d).get();if(leg.exists&&d===day&&!hasData(state)){state=norm(leg.data());changed=true}}catch(e){}
+        if(hasData(state)){dirty=true;flush()}
+      }
+    }
+    if(changed){saveLocal();render()}
+    setSync('on','Synchronisé');
+  },e=>{console.warn(e);setSync('','Hors ligne (local)')});
 }
 function loadWeek(){
   const wk=weekKey(day);if(wk===curWeek)return;flush();curWeek=wk;week={items:{},synth:{}};
