@@ -860,7 +860,9 @@ function ficheName(f){return [f.prenom,f.nom].filter(Boolean).join(' ')||f.nomCo
 function ficheStatus(f){if(f.sentAt)return ['sent','Envoyé sur WhatsApp'];const st=ficheSteps(f);if(f.saved&&st.length&&st.every(x=>x.time&&x.ok))return ['ready','Parcours confirmé'];if(st.length)return ['prep','En préparation'];return ['new','Nouvelle']}
 function waMessage(f){const st=ficheSteps(f).filter(x=>x.time).sort((a,b)=>a.time.localeCompare(b.time));
   return `Bonjour ${f.prenom||''} 🌸\n\nBienvenue chez AVA BAY.\n\nVoici le programme que nous avons préparé ensemble pour votre journée :\n\n${st.map(x=>`🕐 ${x.time.replace(':','h')} — ${x.act}`).join('\n')}\n\n${f.venue&&f.venue!=='seule'?`Vous êtes accompagnée de : ${VENUE_TXT[f.venue]}.\n\n`:''}Notre équipe reste à votre disposition tout au long de votre parcours.\n\nNous vous souhaitons une merveilleuse journée de détente chez AVA BAY ✨`}
-function waLink(f){const tel=(f.tel||'').replace(/[^\d+]/g,'');let n=tel.startsWith('+')?tel.slice(1):tel.startsWith('00')?tel.slice(2):tel.startsWith('0')?'212'+tel.slice(1):tel;return `https://wa.me/${n}?text=${encodeURIComponent(waMessage(f))}`}
+function waNumber(tel){let d=(tel||'').replace(/\D/g,'');if(d.startsWith('00'))d=d.slice(2);if(d.startsWith('2120'))d='212'+d.slice(4);if(d.startsWith('0'))d='212'+d.slice(1);if(d.length===9&&/^[5-7]/.test(d))d='212'+d;return d}
+function waPretty(tel){const d=waNumber(tel);if(!d)return '';if(d.startsWith('212')&&d.length===12)return '+212 '+d.slice(3,4)+' '+d.slice(4,6)+' '+d.slice(6,8)+' '+d.slice(8,10)+' '+d.slice(10,12);return '+'+d}
+function waLink(f){return `https://wa.me/${waNumber(f.tel)}?text=${encodeURIComponent(waMessage(f))}`}
 function upsertClient(f){const name=ficheName(f);if(!name||name==='Cliente')return;const key=(f.tel||'').replace(/\D/g,'');let c=clients.rows.find(x=>(key&&(x.tel||'').replace(/\D/g,'')===key)||(x.nom||'').trim().toLowerCase()===name.toLowerCase());
   if(!c){c={id:uid(),nom:name,tel:f.tel||'',email:f.email||'',pref:'',notes:'',vip:false};clients.rows.unshift(c)}else{if(f.tel&&!c.tel)c.tel=f.tel;if(f.email&&!c.email)c.email=f.email;if(!c.nom)c.nom=name}
   if(f.social)c.social=f.social;persistClients()}
@@ -868,7 +870,7 @@ function renderFiches(){
   const rows=fichesToday();
   if(fiche){const f=rows.find(r=>r.id===fiche);if(f)return renderFicheBuilder(f);fiche=null}
   const card=f=>{const [sc,sl]=ficheStatus(f);const st=ficheSteps(f).filter(x=>x.time).sort((a,b)=>a.time.localeCompare(b.time));
-    return `<button class="fc ${sc}" data-openfiche="${f.id}"><div class="fh"><span class="av">${esc(((f.prenom||f.nomComplet||'?')[0]+((f.nom||'')[0]||'')).toUpperCase())}</span><div><div class="nm">${esc(ficheName(f))}</div><div class="sub">${f.h?'Arrivée '+esc(f.h):''}${f.venue?' · '+VENUES.find(v=>v[0]===f.venue)[1].toLowerCase():''}${f.tel?' · '+esc(f.tel):''}</div></div><span class="chip ${sc==='sent'?'ok':sc==='ready'?'pole':sc==='prep'?'fix':''}">${sl}</span></div>
+    return `<button class="fc ${sc}" data-openfiche="${f.id}"><div class="fh"><span class="av">${esc(((f.prenom||f.nomComplet||'?')[0]+((f.nom||'')[0]||'')).toUpperCase())}</span><div><div class="nm">${esc(ficheName(f))}</div><div class="sub">${f.h?'Arrivée '+esc(f.h):''}${f.venue?' · '+VENUES.find(v=>v[0]===f.venue)[1].toLowerCase():''}${f.tel?' · '+esc(waPretty(f.tel)||f.tel):''}</div></div><span class="chip ${sc==='sent'?'ok':sc==='ready'?'pole':sc==='prep'?'fix':''}">${sl}</span></div>
       ${st.length?`<div class="steps">${st.map(x=>`<span class="stp"><b>${esc(x.time.replace(':','h'))}</b> ${esc(x.act)}</span>`).join('')}</div>`:'<div class="sub">Aucun parcours encore construit</div>'}
       ${f.type?`<div class="sub">Retour : ${CTYPE[f.type]?.[0]||''}${f.motif?' — '+esc(f.motif):''}</div>`:''}</button>`};
   const sent=rows.filter(f=>f.sentAt).length;
@@ -899,7 +901,7 @@ function renderFicheBuilder(f){
   }else{
     const ordered=steps.slice().sort((a,b)=>(a.time||'99').localeCompare(b.time||'99'));
     const allOk=steps.length&&steps.every(x=>x.time&&x.ok);
-    const canSend=allOk&&(f.tel||'').replace(/\D/g,'').length>=9;
+    const num=waNumber(f.tel);const canSend=allOk&&num.length>=11;
     body=`<div class="card"><div class="ch"><h3>Organisation par la réception</h3><span class="note">Vérifier les disponibilités, fixer l'ordre et les horaires, confirmer chaque étape.</span></div>
       <div class="plist">${steps.length?ordered.map((x,i)=>{const z=ZONES.find(z=>z.id===x.zone);return `<div class="pstep ${x.ok?'ok':''} ${x.dispo==='no'?'no':''}" data-sid="${x.id}" style="--pole:${z?z.color:'var(--accent)'}">
           <span class="n">${i+1}</span><input type="time" data-sk="time" value="${esc(x.time||'')}" aria-label="Heure">
@@ -908,8 +910,9 @@ function renderFicheBuilder(f){
           <label class="cf"><input type="checkbox" data-sk="ok" ${x.ok?'checked':''}>Confirmée</label>
           <button class="rm" data-rmstep="${x.id}" aria-label="Retirer">×</button></div>`}).join(''):'<div class="empty">Aucune étape — retourne à « Envies » pour en sélectionner.</div>'}</div>
       <div class="addstep"><select id="addAct"><option value="">+ Ajouter une prestation…</option>${ZONES.map(z=>`<optgroup label="${esc(z.name)}">${z.acts.map(a=>`<option value="${z.id}|${esc(a)}">${esc(a)}</option>`).join('')}</optgroup>`).join('')}</select></div></div>
-      <div class="card preview"><div class="ch"><h3>Aperçu du programme</h3><span class="chip ${canSend?'ok':'fix'}">${allOk?(canSend?'Prêt à envoyer':'Numéro WhatsApp manquant'):'Horaires et confirmations incomplets'}</span></div><pre>${esc(waMessage(f))}</pre>
-      <div class="fnav"><button class="pill" data-fstep="2">‹ Envies</button><span></span><button class="pill" data-savefiche>Enregistrer le parcours</button><a class="addbtn wa ${canSend?'':'off'}" ${canSend?`href="${waLink(f)}" target="_blank" rel="noopener" data-sendwa`:'aria-disabled="true"'}><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5.1-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.6.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.3-.4.8-1.4.1-.2 0-.3 0-.5l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 12 12 0 0 0 4.6 4c1.7.7 2 .6 2.7.5a2.3 2.3 0 0 0 1.5-1.1 1.9 1.9 0 0 0 .1-1.1c0-.1-.2-.2-.4-.3z"/></svg>Valider et envoyer sur WhatsApp</a></div>
+      <div class="card preview"><div class="ch"><h3>Aperçu du programme</h3><span class="chip ${canSend?'ok':'fix'}">${allOk?(canSend?'Prêt à envoyer':'Numéro WhatsApp manquant ou incomplet'):'Horaires et confirmations incomplets'}</span></div><pre>${esc(waMessage(f))}</pre>
+      <div class="fields"><label class="h">Numéro WhatsApp de la cliente<input type="tel" data-fk="tel" value="${esc(f.tel||'')}" placeholder="06 55 05 64 05 ou +212 6…" inputmode="tel"></label><label class="h">Sera envoyé au<span class="calc num" style="${num.length>=11?'':'color:var(--urg)'}">${num.length>=11?esc(waPretty(f.tel)):'— numéro invalide —'}</span></label></div>
+      <div class="fnav"><button class="pill" data-fstep="2">‹ Envies</button><span></span><button class="pill" data-savefiche>Enregistrer le parcours</button><a class="addbtn wa ${canSend?'':'off'}" ${canSend?`href="${waLink(f)}" target="_blank" rel="noopener" data-sendwa`:'aria-disabled="true"'}><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5.1-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.6.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.3-.4.8-1.4.1-.2 0-.3 0-.5l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 12 12 0 0 0 4.6 4c1.7.7 2 .6 2.7.5a2.3 2.3 0 0 0 1.5-1.1 1.9 1.9 0 0 0 .1-1.1c0-.1-.2-.2-.4-.3z"/></svg>Envoyer sur WhatsApp${num.length>=11?` · ${esc(waPretty(f.tel))}`:''}</a></div>
       ${f.sentAt?`<div class="verdict ok">✓ Programme envoyé à ${esc(f.sentAt)} au ${esc(f.tel||'')}</div>`:''}</div>
       <div class="card"><button class="ch" data-intern style="width:100%;text-align:left"><h3>Suivi interne (équipe)</h3><span class="note">${ficheIntern?'masquer':'départ, dépense, retour cliente'}</span></button>
       ${ficheIntern?`<div class="fields"><label class="s">Départ<input type="time" data-fk="dep" value="${esc(f.dep||'')}"></label><label class="s">Dépense (DH)<input type="number" inputmode="decimal" data-fk="montant" value="${esc(f.montant||'')}"></label>
@@ -1033,7 +1036,7 @@ V.addEventListener('click',e=>{
   if(D.addclient!==undefined){clients.rows.unshift({id:uid(),nom:'',tel:'',email:'',pref:'',notes:'',vip:false});persistClients();render();const f=V.querySelector('.cc input');f&&f.focus();return}
   if(D.delclient){if(!b.classList.contains('confirm')){b.classList.add('confirm');b.textContent='Supprimer ?';setTimeout(()=>{b.classList.remove('confirm');b.textContent='×'},2500);return}clients.rows=clients.rows.filter(c=>c.id!==D.delclient);persistClients();render();return}
 });
-V.addEventListener('click',e=>{const wa=e.target.closest('a[data-sendwa]');if(wa){const f=fichesToday().find(r=>r.id===fiche);f.saved=true;f.sentAt=new Date().toTimeString().slice(0,5);upsertClient(f);persist();setTimeout(render,300);return}const sm=e.target.closest('.a .sum');if(sm&&!e.target.closest('select')){const id=sm.dataset.open;suiviOpen.has(id)?suiviOpen.delete(id):suiviOpen.add(id);render()}});
+V.addEventListener('click',e=>{const wa=e.target.closest('a[data-sendwa]');if(wa){const f=fichesToday().find(r=>r.id===fiche);wa.setAttribute('href',waLink(f));f.saved=true;f.sentAt=new Date().toTimeString().slice(0,5);upsertClient(f);persist();setTimeout(render,300);return}const sm=e.target.closest('.a .sum');if(sm&&!e.target.closest('select')){const id=sm.dataset.open;suiviOpen.has(id)?suiviOpen.delete(id):suiviOpen.add(id);render()}});
 V.addEventListener('input',e=>{
   const t=e.target;const D=t.dataset;
   if(t.id==='q'){query=t.value.trim();rerenderKeepFocus();return}
@@ -1057,7 +1060,7 @@ V.addEventListener('input',e=>{
 V.addEventListener('change',e=>{
   const t=e.target;const D=t.dataset;
   if(t.id==='addAct'&&t.value){const f=fichesToday().find(r=>r.id===fiche);const [z,a]=t.value.split('|');ficheSteps(f).push({id:uid(),zone:z,act:a,time:'',dispo:'',ok:false});f.presta=f.steps.map(x=>x.act);persist();render();return}
-  if(D.sk||D.fk){if(t.type==='checkbox'||D.sk==='time'||D.fk==='type'||D.fk==='st')render();return}
+  if(D.sk||D.fk){if(t.type==='checkbox'||D.sk==='time'||D.fk==='type'||D.fk==='st'||(D.fk==='tel'&&ficheStep===3))render();return}
   if(D.photo!==undefined){const f=t.files&&t.files[0];if(!f)return;const btn=t.closest('.pbtn');btn.classList.add('busy');btn.querySelector('span').textContent='Envoi…';const [k,g]=D.photo.split(':');addPhoto(k,+g,f);return}
   if(D.f&&D.f!=='rc'){render();return}
   if(t.type==='checkbox'&&(D.k||D.pf)){render();return}
