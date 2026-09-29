@@ -375,6 +375,13 @@ table.ca tr.total td{padding:9px 8px;font-weight:700;border-top:2px solid var(--
 .multi{display:flex;flex-wrap:wrap;gap:6px;padding-top:2px}
 .multi button{font-size:12.5px;font-weight:500;padding:6px 11px;border-radius:999px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink-2);text-transform:none;letter-spacing:0;font-family:var(--fb)}
 .multi button[aria-pressed=true]{background:var(--pole);border-color:var(--pole);color:var(--pole-ink)}
+/* sélection cliente connue */
+.pick input[type=search]{width:100%;padding:12px 14px;border-radius:12px;font-size:15px}
+.picks{display:grid;gap:6px}
+.pkc{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;text-align:left;padding:10px 12px;border:1.5px solid var(--line);border-radius:12px;background:var(--surface)}
+.pkc:hover{border-color:var(--pole);background:var(--pole-soft)}
+.pkc b{font-family:var(--fd);font-size:18px;font-weight:600}
+.pkc span:not(.chip){font-size:12.5px;color:var(--ink-3);flex:1 1 200px}
 /* clients */
 .cc{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 40px 12px 14px;position:relative;border-left:4px solid var(--line);box-shadow:var(--shadow)}
 .cc.vip{border-left-color:var(--fix)}
@@ -907,7 +914,8 @@ const ZONES=[
 ];
 const VENUES=[['seule','Seule'],['amie','Avec une amie'],['enfants','Avec ses enfants'],['famille','En famille']];
 const VENUE_TXT={seule:'seule',amie:'une amie',enfants:'vos enfants',famille:'votre famille'};
-let fiche=null,ficheStep=1,ficheIntern=false;
+let fiche=null,ficheStep=1,ficheIntern=false,pickQ='';
+function pickResults(){const q=pickQ.trim().toLowerCase();if(!q)return `<p class="note" style="margin:0">${clients.rows.length} clientes dans la base — tape quelques lettres ou chiffres pour la retrouver et pré-remplir sa fiche.</p>`;const qd=q.replace(/\D/g,'').replace(/^0+/,'');const res=clients.rows.filter(c=>[c.nom,c.email,c.social,c.snap,c.code].join(' ').toLowerCase().includes(q)||(qd.length>=3&&(c.tel||'').replace(/\D/g,'').includes(qd))).slice(0,8);return res.length?res.map(c=>`<button class="pkc" data-pick="${c.id}"><b>${esc(c.nom||'Sans nom')}</b><span>${esc([c.code,c.tel?waPretty(c.tel)||c.tel:'',c.social,c.segment&&c.segment!=='Prospect'?c.segment:''].filter(Boolean).join(' · '))}</span>${c.vip?'<span class="chip fix">VIP</span>':''}</button>`).join(''):'<p class="note" style="margin:0">Aucune cliente trouvée — remplis la fiche ci-dessous, elle sera ajoutée à la base.</p>'}
 const fichesToday=()=>state.regs.client;
 function ficheSteps(f){return f.steps||(f.steps=[])}
 function ficheName(f){return [f.prenom,f.nom].filter(Boolean).join(' ')||f.nomComplet||'Cliente'}
@@ -917,7 +925,7 @@ function waMessage(f){const st=ficheSteps(f).filter(x=>x.time).sort((a,b)=>a.tim
 function waNumber(tel){let d=(tel||'').replace(/\D/g,'');if(d.startsWith('00'))d=d.slice(2);if(d.startsWith('2120'))d='212'+d.slice(4);if(d.startsWith('0'))d='212'+d.slice(1);if(d.length===9&&/^[5-7]/.test(d))d='212'+d;return d}
 function waPretty(tel){const d=waNumber(tel);if(!d)return '';if(d.startsWith('212')&&d.length===12)return '+212 '+d.slice(3,4)+' '+d.slice(4,6)+' '+d.slice(6,8)+' '+d.slice(8,10)+' '+d.slice(10,12);return '+'+d}
 function waLink(f){return `https://wa.me/${waNumber(f.tel)}?text=${encodeURIComponent(waMessage(f))}`}
-function upsertClient(f){const name=ficheName(f);if(!name||name==='Cliente')return;const key=(f.tel||'').replace(/\D/g,'');let c=clients.rows.find(x=>(key&&(x.tel||'').replace(/\D/g,'')===key)||(x.nom||'').trim().toLowerCase()===name.toLowerCase());
+function upsertClient(f){const name=ficheName(f);if(!name||name==='Cliente')return;const key=(f.tel||'').replace(/\D/g,'');let c=(f.clientId&&clients.rows.find(x=>x.id===f.clientId))||clients.rows.find(x=>(key&&(x.tel||'').replace(/\D/g,'')===key)||(x.nom||'').trim().toLowerCase()===name.toLowerCase());
   if(!c){c={id:uid(),nom:name,tel:f.tel||'',email:f.email||'',pref:'',notes:'',vip:false};clients.rows.unshift(c)}else{if(f.tel&&!c.tel)c.tel=f.tel;if(f.email&&!c.email)c.email=f.email;if(!c.nom)c.nom=name}
   if(f.social)c.social=f.social;if(f.bday)c.bday=f.bday;
   const acts=ficheSteps(f).slice().sort((a,b)=>(a.time||'').localeCompare(b.time||'')).map(x=>(x.time?x.time.replace(':','h')+' ':'')+x.act);
@@ -943,7 +951,10 @@ function renderFicheBuilder(f){
   const head=`<div class="card fbh"><div class="ch"><button class="pill" data-closefiche>‹ Toutes les fiches</button><h3 style="flex:1">${esc(ficheName(f))}</h3><span class="chip ${sc==='sent'?'ok':sc==='ready'?'pole':sc==='prep'?'fix':''}">${sl}</span><span class="note">Arrivée ${esc(f.h||'—')}</span></div>${stepper}</div>`;
   let body='';
   if(ficheStep===1){
-    body=`<div class="card"><h3>Informations de la cliente</h3><div class="fields">
+    const linked=f.clientId&&clients.rows.find(c=>c.id===f.clientId);
+    body=`<div class="card pick"><div class="ch"><h3>Cliente déjà connue ?</h3>${linked?`<span class="chip ok">✓ ${esc(linked.nom)}${linked.code?' · '+esc(linked.code):''}</span><button class="pill" data-unlink>Changer</button>`:''}</div>
+      ${linked?'':`<input type="search" id="pickQ" placeholder="Rechercher dans la base : nom, téléphone, @instagram, code AVA…" value="${esc(pickQ)}" autocomplete="off"><div class="picks" id="picks">${pickResults()}</div>`}</div>
+      <div class="card"><h3>Informations de la cliente</h3><div class="fields">
       <label class="m">Prénom<input data-fk="prenom" value="${esc(f.prenom||'')}" autocomplete="off"></label>
       <label class="m">Nom<input data-fk="nom" value="${esc(f.nom||'')}" autocomplete="off"></label>
       <label class="m">Téléphone (WhatsApp)<input type="tel" data-fk="tel" value="${esc(f.tel||'')}" placeholder="+212 6…" inputmode="tel"></label>
@@ -1103,10 +1114,12 @@ V.addEventListener('click',e=>{
   if(D.closeact){suiviOpen.delete(D.closeact);render();return}
   if(D.delact){if(!b.classList.contains('confirm')){b.classList.add('confirm');b.textContent='Confirmer la suppression';setTimeout(()=>{b.classList.remove('confirm');b.textContent='Supprimer'},3000);return}suivi.rows=suivi.rows.filter(r=>r.id!==D.delact);persistSuivi();render();return}
   // fiches clientes
-  if(D.newfiche!==undefined){const f={id:uid(),h:new Date().toTimeString().slice(0,5),steps:[],st:'open'};state.regs.client.push(f);fiche=f.id;ficheStep=1;persist();render();const i=V.querySelector('input[data-fk=prenom]');i&&i.focus();return}
+  if(D.newfiche!==undefined){pickQ='';const f={id:uid(),h:new Date().toTimeString().slice(0,5),steps:[],st:'open'};state.regs.client.push(f);fiche=f.id;ficheStep=1;persist();render();const i=V.querySelector('input[data-fk=prenom]');i&&i.focus();return}
   if(D.openfiche){fiche=D.openfiche;const f=fichesToday().find(r=>r.id===fiche);ficheStep=f.sentAt||ficheSteps(f).length?3:1;ficheIntern=false;render();return}
   if(D.closefiche!==undefined){fiche=null;render();return}
   if(D.fstep){const f=fichesToday().find(r=>r.id===fiche);if(+D.fstep===3&&f&&!ficheSteps(f).length){const n=b.closest('.fnav').querySelector('.note');if(n){n.textContent='Sélectionne au moins une envie ci-dessus';n.style.color='var(--urg)'}return}ficheStep=+D.fstep;render();window.scrollTo({top:0});return}
+  if(D.pick){const f=fichesToday().find(r=>r.id===fiche);const c=clients.rows.find(x=>x.id===D.pick);const parts=(c.nom||'').trim().split(' ');Object.assign(f,{clientId:c.id,prenom:parts[0]||'',nom:parts.slice(1).join(' '),tel:c.tel||f.tel||'',email:c.email||'',social:c.social||'',bday:c.bday||''});f.nomComplet=ficheName(f);pickQ='';persist();render();return}
+  if(D.unlink!==undefined){const f=fichesToday().find(r=>r.id===fiche);delete f.clientId;persist();render();return}
   if(D.venue){const f=fichesToday().find(r=>r.id===fiche);f.venue=f.venue===D.venue?'':D.venue;persist();render();return}
   if(D.act){const f=fichesToday().find(r=>r.id===fiche);const st=ficheSteps(f);const i=st.findIndex(x=>x.act===D.act);if(i>=0)st.splice(i,1);else st.push({id:uid(),zone:D.zone,act:D.act,time:'',dispo:'',ok:false});f.presta=st.map(x=>x.act);persist();render();return}
   if(D.dispo){const f=fichesToday().find(r=>r.id===fiche);const x=ficheSteps(f).find(x=>x.id===b.closest('.pstep').dataset.sid);x.dispo=x.dispo===D.dispo?'':D.dispo;if(x.dispo==='no')x.ok=false;persist();render();return}
@@ -1126,6 +1139,7 @@ V.addEventListener('input',e=>{
   const t=e.target;const D=t.dataset;
   if(t.id==='q'){query=t.value.trim();rerenderKeepFocus();return}
   if(t.id==='clientQ'){clientQ=t.value;rerenderKeepFocus();return}
+  if(t.id==='pickQ'){pickQ=t.value;const el=$('#picks');if(el)el.innerHTML=pickResults();return}
   if(D.fk){const f=fichesToday().find(r=>r.id===fiche);if(!f)return;f[D.fk]=t.value;if(D.fk==='prenom'||D.fk==='nom')f.nomComplet=ficheName(f);persist();if(['montant','type','motif','dep'].includes(D.fk)&&f.saved)upsertClient(f);return}
   if(D.sk){const f=fichesToday().find(r=>r.id===fiche);const x=ficheSteps(f).find(x=>x.id===t.closest('.pstep').dataset.sid);if(!x)return;x[D.sk]=t.type==='checkbox'?t.checked:t.value;persist();return}
   if(D.f){const it=t.closest('.item');const k=it.dataset.k,gi=+it.dataset.gi;const o=item(k,gi);const v=D.f==='rc'?t.checked:t.value;if(v)o[D.f]=v;else delete o[D.f];persistCL(k);if(D.f==='rc')render();return}
