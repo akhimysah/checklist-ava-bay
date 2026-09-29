@@ -405,6 +405,16 @@ table.ca tr.total td{padding:9px 8px;font-weight:700;border-top:2px solid var(--
 .hv b{font-family:var(--fd);font-size:15px}
 .hv>span:not(.chip):not(.num){color:var(--ink-2);flex:1 1 200px}
 @media(max-width:700px){.cl .st{display:none}.cl .cs{gap:10px}}
+/* accès serveur */
+#gate{position:fixed;inset:0;z-index:100;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(6px);display:grid;place-items:center;padding:20px}
+#gate .gin{background:var(--surface);border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow);padding:26px 22px;max-width:380px;width:100%;display:grid;gap:12px;text-align:center}
+#gate img{width:64px;height:64px;border-radius:50%;margin:0 auto}
+#gate h2{font-size:28px}
+#gate p{margin:0;color:var(--ink-2);font-size:14px}
+#gate .gerr{color:var(--urg);font-weight:600}
+#gate input{padding:12px 14px;border-radius:12px;font-size:16px;text-align:center}
+#gate .addbtn{padding:13px;font-size:15px}
+#gate .gskip{font-size:12.5px;color:var(--ink-3);text-decoration:underline}
 /* bottom nav */
 .bnav{display:none}
 @media(max-width:700px){
@@ -556,7 +566,7 @@ const lsKey=d=>'ava-checklist:'+d;
 function loadLocal(d){try{const j=localStorage.getItem(lsKey(d));return j?norm(JSON.parse(j)):null}catch(e){return null}}
 function saveLocal(){try{localStorage.setItem(lsKey(day),JSON.stringify(state));localStorage.setItem('ava-suivi',JSON.stringify(suivi));localStorage.setItem('ava-team',JSON.stringify(team));localStorage.setItem('ava-clients',JSON.stringify(clients));localStorage.setItem('ava-week:'+curWeek,JSON.stringify(week))}catch(e){}}
 function setSync(cls,txt){const el=$('#sync');el.className='sync '+cls;el.innerHTML='<span>'+txt+'</span>'}
-function schedule(){setSync('saving','Enregistrement…');clearTimeout(writeTimer);writeTimer=setTimeout(flush,700)}
+function schedule(){lastEditAt=Date.now();setSync('saving','Enregistrement…');clearTimeout(writeTimer);writeTimer=setTimeout(flush,700)}
 function persist(){saveLocal();if(!db)return;dirty=true;schedule()}
 function persistWeek(){saveLocal();if(!db)return;dirtyWeek=true;schedule()}
 function persistCL(k){k==='hebdo'?persistWeek():persist()}
@@ -981,27 +991,29 @@ let clientOpen=null,clientFilter='all';
 function clientVisits(c){const local=clientHistory(c.nom).map(x=>({fid:null,date:x.date,acts:x.presta,montant:x.montant,type:x.type,motif:x.motif}));const all=[...(c.visits||[])];for(const l of local){if(!all.some(v=>v.date===l.date))all.push(l)}return all.sort((a,b)=>b.date.localeCompare(a.date))}
 function renderClients(){
   const q=clientQ.toLowerCase();const today=todayISO();const month=today.slice(0,7);
-  let rows=clients.rows.filter(c=>!q||[c.nom,c.tel,c.email,c.social,c.pref,c.notes].join(' ').toLowerCase().includes(q));
+  let rows=clients.rows.filter(c=>!q||[c.nom,c.tel,c.email,c.social,c.snap,c.tiktok,c.fb,c.code,c.segment,c.loc,c.pref,c.notes].join(' ').toLowerCase().includes(q));
   const withV=rows.map(c=>({c,v:clientVisits(c)}));
-  const filtered=withV.filter(({c,v})=>clientFilter==='all'||(clientFilter==='vip'?c.vip:clientFilter==='month'?v.some(x=>x.date.startsWith(month)):clientFilter==='notel'?!waNumber(c.tel):clientFilter==='recl'?v.some(x=>x.type==='recl'||x.type==='inc'||x.type==='avis'):true))
+  const filtered=withV.filter(({c,v})=>clientFilter==='all'||(clientFilter==='vip'?c.vip:clientFilter==='month'?v.some(x=>x.date.startsWith(month)):clientFilter==='notel'?!waNumber(c.tel):clientFilter==='verify'?c.verify:clientFilter==='influ'?/influ|créatrice/i.test(c.segment||''):clientFilter==='recl'?v.some(x=>x.type==='recl'||x.type==='inc'||x.type==='avis'):true))
     .sort((a,b)=>(b.c.vip?1:0)-(a.c.vip?1:0)||((b.v[0]?.date||'')).localeCompare(a.v[0]?.date||'')||(a.c.nom||'').localeCompare(b.c.nom||''));
-  const k={all:clients.rows.length,vip:clients.rows.filter(c=>c.vip).length,month:withV.filter(x=>x.v.some(v=>v.date.startsWith(month))).length,recl:withV.filter(x=>x.v.some(v=>v.type==='recl'||v.type==='inc'||v.type==='avis')).length,notel:clients.rows.filter(c=>!waNumber(c.tel)).length};
+  const k={verify:clients.rows.filter(c=>c.verify).length,influ:clients.rows.filter(c=>/influ|créatrice/i.test(c.segment||'')).length,all:clients.rows.length,vip:clients.rows.filter(c=>c.vip).length,month:withV.filter(x=>x.v.some(v=>v.date.startsWith(month))).length,recl:withV.filter(x=>x.v.some(v=>v.type==='recl'||v.type==='inc'||v.type==='avis')).length,notel:clients.rows.filter(c=>!waNumber(c.tel)).length};
   const row=({c,v})=>{const num=waNumber(c.tel);const opn=clientOpen===c.id;const spend=v.reduce((a,x)=>a+(+x.montant||0),0);const last=v[0];const ini=((c.nom||'?').trim()[0]||'?').toUpperCase();
     return `<div class="cl ${c.vip?'vip':''} ${opn?'open':''}" data-cid="${c.id}">
       <div class="cs" data-opencl="${c.id}"><span class="av">${esc(ini)}</span>
-        <div class="who"><div class="nm">${esc(c.nom||'Sans nom')}${c.vip?' <span class="chip fix">VIP</span>':''}</div><div class="sub">${c.tel?esc(waPretty(c.tel)||c.tel):'<span style="color:var(--urg)">sans téléphone</span>'}${c.social?' · '+esc(c.social):''}</div></div>
+        <div class="who"><div class="nm">${esc(c.nom||'Sans nom')}${c.vip?' <span class="chip fix">VIP</span>':''}${c.segment&&c.segment!=='Prospect'?` <span class="chip pole">${esc(c.segment)}</span>`:''}${c.verify?' <span class="chip urg">à vérifier</span>':''}</div><div class="sub">${c.code?esc(c.code)+' · ':''}${c.tel?esc(waPretty(c.tel)||c.tel):'<span style="color:var(--urg)">sans téléphone</span>'}${c.social?' · '+esc(c.social):''}${c.loc?' · '+esc(c.loc):''}</div></div>
         <div class="st"><b class="num">${v.length}</b><span>visite${v.length>1?'s':''}</span></div>
         <div class="st"><b class="num">${last?fmtDate(last.date).slice(0,5):'—'}</b><span>dernière</span></div>
         <div class="st"><b class="num">${spend?spend.toLocaleString('fr-FR'):'—'}</b><span>DH</span></div>
         <div class="contact">${num?`<a class="pill" href="tel:+${num}" data-stop>📞</a><a class="pill" href="https://wa.me/${num}" target="_blank" rel="noopener" data-stop>💬</a>`:''}</div></div>
       ${opn?`<div class="ce"><div class="fields">
         <label class="m">Nom complet<input data-c="nom" value="${esc(c.nom||'')}"></label><label class="m">Téléphone<input type="tel" data-c="tel" value="${esc(c.tel||'')}" inputmode="tel"></label><label class="m">E-mail<input type="email" data-c="email" value="${esc(c.email||'')}"></label>
-        <label class="m">Instagram / TikTok<input data-c="social" value="${esc(c.social||'')}" placeholder="@…"></label><label class="s">Anniversaire<input type="date" data-c="bday" value="${esc(c.bday||'')}"></label><label class="chk"><input type="checkbox" data-c="vip" ${c.vip?'checked':''}>VIP / habituée</label>
+        <label class="m">Instagram<input data-c="social" value="${esc(c.social||'')}" placeholder="@…"></label><label class="m">Snapchat<input data-c="snap" value="${esc(c.snap||'')}"></label><label class="m">TikTok<input data-c="tiktok" value="${esc(c.tiktok||'')}"></label><label class="m">Facebook<input data-c="fb" value="${esc(c.fb||'')}"></label>
+        <label class="m">Profil<input data-c="segment" list="seglist" value="${esc(c.segment||'')}" placeholder="Prospect, Influenceuse…"></label><label class="m">Localisation<input data-c="loc" list="loclist" value="${esc(c.loc||'')}" placeholder="Locale, Expatriée…"></label><label class="chk"><input type="checkbox" data-c="verify" ${c.verify?'checked':''}>À vérifier</label><label class="s">Anniversaire<input type="date" data-c="bday" value="${esc(c.bday||'')}"></label><label class="chk"><input type="checkbox" data-c="vip" ${c.vip?'checked':''}>VIP / habituée</label>
         <label class="wide">Préférences, allergies, habitudes<input data-c="pref" value="${esc(c.pref||'')}" placeholder="Soin préféré, table habituelle, allergie…"></label><label class="wide">Notes<textarea data-c="notes" placeholder="Remarques, enfants, ce qu'elle aime…">${esc(c.notes||'')}</textarea></label></div>
         <div class="hist2">${v.length?`<h4>Historique des visites</h4>${v.map(x=>`<div class="hv"><b>${fmtDate(x.date)}</b><span>${x.acts&&x.acts.length?esc(x.acts.join(' · ')):'visite'}</span>${x.montant?`<span class="num">${esc(x.montant)} DH</span>`:''}${x.type?`<span class="chip ${CTYPE[x.type]?.[1]||''}">${CTYPE[x.type]?.[0]||''}${x.motif?' — '+esc(String(x.motif).slice(0,50)):''}</span>`:''}</div>`).join('')}`:'<p class="note" style="margin:0">Aucune visite enregistrée.</p>'}</div>
         <div class="confirm"><button class="pill" data-newfrom="${c.id}">+ Fiche du jour pour cette cliente</button><span style="flex:1"></span><button class="danger" data-delclient="${c.id}">Supprimer la cliente</button><button data-closecl>Fermer</button></div></div>`:''}</div>`};
-  return `<div class="card" id="cdir"><div class="ch"><h3>Base clientes</h3><span class="note">${clients.rows.length} fiche${clients.rows.length>1?'s':''}</span><input type="search" id="clientQ" placeholder="Nom, téléphone, @…" value="${esc(clientQ)}" style="border-radius:999px"><button class="addbtn" data-addclient>+ Nouvelle cliente</button></div>
-    <div class="kpis">${[['all','Toutes','pole'],['vip','VIP',''],['month','Venues ce mois','ok'],['recl','Avec réclamation','urg'],['notel','Sans téléphone','fix']].map(([v,l,cl])=>`<button class="kpi ${cl}" data-cf="${v}" aria-pressed="${clientFilter===v}"><b class="num">${k[v]}</b><span>${l}</span></button>`).join('')}</div>
+  const dl=`<datalist id="seglist">${['Prospect','Cliente','Influenceuse','Créatrice de contenu','Maquilleuse','Partenaire'].map(x=>`<option value="${x}">`).join('')}</datalist><datalist id="loclist">${['Locale','Expatriée','Mi-expatriée','France','Touriste'].map(x=>`<option value="${x}">`).join('')}</datalist>`;
+  return dl+`<div class="card" id="cdir"><div class="ch"><h3>Base clientes</h3><span class="note">${clients.rows.length} fiche${clients.rows.length>1?'s':''}</span><input type="search" id="clientQ" placeholder="Nom, téléphone, @…" value="${esc(clientQ)}" style="border-radius:999px"><button class="addbtn" data-addclient>+ Nouvelle cliente</button></div>
+    <div class="kpis">${[['all','Toutes','pole'],['vip','VIP',''],['influ','Influenceuses','pole'],['month','Venues ce mois','ok'],['recl','Avec réclamation','urg'],['verify','À vérifier','fix']].map(([v,l,cl])=>`<button class="kpi ${cl}" data-cf="${v}" aria-pressed="${clientFilter===v}"><b class="num">${k[v]}</b><span>${l}</span></button>`).join('')}</div>
     <p class="note" style="margin:-4px 0 0">Touche une cliente pour modifier sa fiche, voir ses visites, l'appeler ou lui créer sa fiche du jour. Les clientes des fiches du jour sont ajoutées automatiquement.</p>
     <div class="cls">${filtered.length?filtered.map(row).join(''):`<div class="empty">${q?'Aucune cliente ne correspond.':'Aucune cliente dans cette vue.'}</div>`}</div></div>`;
 }
@@ -1174,6 +1186,54 @@ $('#sizeSeg').addEventListener('click',e=>{const b=e.target.closest('button');if
 $('#appearReset').onclick=()=>{appear={theme:'light',font:'ava',size:'15px'};applyAppear()};
 applyAppear();
 
+
+/* ---------- stockage serveur (checklist.avabay-marrakech.com) ---------- */
+let lastEditAt=0;
+const SERVER_MODE=!window.claude&&/avabay-marrakech\.com$/.test(location.hostname);
+function accessCode(){try{return localStorage.getItem('ava-code')||''}catch(e){return ''}}
+function serverDB(){
+  const call=async(q,opt={})=>{const r=await fetch('api.php?'+q,Object.assign({cache:'no-store',headers:{'X-Ava-Code':accessCode(),'Content-Type':'application/json'}},opt));
+    if(r.status===401){showGate('Le code d\'accès n\'est plus valide.');throw {code:'not_granted'}}if(!r.ok)throw {code:'unavailable'};return r.json()};
+  const snap=(d,id)=>({id,exists:!!d.exists,data:()=>d.exists?clone(d.data):undefined,metadata:{hasPendingWrites:false,fromCache:false}});
+  const poll=(fetcher,cb,err)=>{let last=null,stop=false;const tick=async()=>{if(stop)return;if(Date.now()-lastEditAt>4000){try{const res=await fetcher();const j=JSON.stringify(res);if(j!==last){last=j;cb(res)}}catch(e){err&&err(e)}}if(!stop)setTimeout(tick,document.hidden?30000:8000)};tick();return()=>{stop=true}};
+  return {
+    doc(path){const q='path='+encodeURIComponent(path);return {
+      get:async()=>snap(await call('action=get&'+q),path.split('/').pop()),
+      set:async body=>{await call('action=set&'+q,{method:'POST',body:JSON.stringify(body)})},
+      onSnapshot:(cb,err)=>poll(()=>call('action=get&'+q),d=>cb(snap(d,path.split('/').pop())),err)}},
+    collection(path){return {onSnapshot:(cb,err)=>poll(()=>call('action=list&prefix='+encodeURIComponent(path+'/')),res=>{const docs=res.docs.map(x=>({id:x.id,exists:true,data:()=>clone(x.data),metadata:{hasPendingWrites:false}}));cb({docs,empty:!docs.length,size:docs.length})},err)}}
+  };
+}
+function showGate(msg,setup){
+  let g=$('#gate');if(!g){g=document.createElement('div');g.id='gate';document.body.appendChild(g)}
+  g.innerHTML=`<div class="gin"><img src="${$('.brand .mark img')?.src||''}" alt=""><h2>${setup?'Créer le code d\'accès':'Code d\'accès'}</h2>
+    <p>${setup?'Première connexion : choisis le code que toute l\'équipe utilisera (8 caractères minimum). Il protège la base clientes et les données de la journée.':'Saisis le code d\'accès de l\'équipe AVA Bay pour ouvrir les données partagées.'}</p>
+    ${msg?`<p class="gerr">${esc(msg)}</p>`:''}
+    <input type="password" id="gcode" placeholder="Code d'accès" autocomplete="current-password">${setup?'<input type="password" id="gcode2" placeholder="Confirmer le code" autocomplete="new-password">':''}
+    <button class="addbtn" id="gok">${setup?'Créer le code':'Ouvrir'}</button><button class="gskip" id="gskip">Continuer sans synchronisation</button></div>`;
+  g.hidden=false;$('#gcode').focus();
+  $('#gskip').onclick=()=>{g.hidden=true};
+  $('#gok').onclick=async()=>{const c=$('#gcode').value.trim();
+    if(setup){if(c.length<8)return showGate('Le code doit faire au moins 8 caractères.',true);if(c!==$('#gcode2').value.trim())return showGate('Les deux codes ne correspondent pas.',true);
+      const r=await fetch('api.php?action=setup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:c})});if(!r.ok)return showGate('Création impossible ('+r.status+').',true)}
+    try{localStorage.setItem('ava-code',c)}catch(e){}
+    const t=await fetch('api.php?action=get&path=clients%2Fliste',{headers:{'X-Ava-Code':c},cache:'no-store'});
+    if(t.status===401)return showGate('Code incorrect.');if(!t.ok)return showGate('Serveur injoignable.');
+    g.hidden=true;connectServer()};
+  $('#gcode').onkeydown=e=>{if(e.key==='Enter')$('#gok').click()};
+}
+async function connectServer(){db=serverDB();setSync('on','Synchronisé');subscribeDay();subscribeGlobals();curWeek='';loadWeek()}
+async function initServer(){
+  if(location.protocol!=='https:'){setSync('','Local (https en attente)');return}
+  try{const st=await (await fetch('api.php?action=status',{cache:'no-store'})).json();
+    if(st.setup)return showGate('',true);
+    if(!accessCode())return showGate('');
+    const t=await fetch('api.php?action=get&path=clients%2Fliste',{headers:{'X-Ava-Code':accessCode()},cache:'no-store'});
+    if(t.status===401)return showGate('');
+    connectServer();
+  }catch(e){setSync('','Hors ligne (local)')}
+}
+
 /* ---------- boot ---------- */
 function start(snap){
   if(snap&&snap.day){day=snap.day;state=snap.state?norm(snap.state):state;view=snap.view||view;if(snap.suivi)suivi=snap.suivi;if(snap.team)team=snap.team;if(snap.clients)clients=snap.clients}
@@ -1185,6 +1245,7 @@ function start(snap){
   window.claude?.hot?.snapshot?.(()=>({day,state,view,suivi,team,clients}));
   window.claude?.use?.('db').then(d=>{if(!d)return;db=d;subscribeDay();subscribeGlobals();curWeek='';loadWeek()}).catch(()=>{});
   window.claude?.use?.('assets').then(a=>{assets=a}).catch(()=>{});
+  if(SERVER_MODE)initServer();
 }
 window.claude?.hot?.ready?window.claude.hot.ready(start):start(window.claude?.hot?.data);
 window.addEventListener('pagehide',flush);
