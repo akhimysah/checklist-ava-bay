@@ -596,16 +596,42 @@ function buildResume(){
   const fr=state.regs.client||[];const RT={comp:'Compliment',recl:'Réclamation',dem:'Demande particulière',inc:'Incident',avis:'Avis en ligne'};
   const clientes={n:fr.length,sent:fr.filter(f=>f.sentAt).length,depense:fr.reduce((a,f)=>a+(num(f.montant)||0),0),retours:fr.filter(f=>f.type).map(f=>({nom:ficheName(f),bracelet:f.bracelet||'',type:RT[f.type]||f.type,motif:f.motif||'',rep:f.rep||'',traite:f.st==='done'}))};
   const ar=suivi.rows.filter(r=>r.st!=='done');const ord={urg:0,late:1,'':2};
-  const actions={open:ar.length,crit:ar.filter(r=>r.crit==='urg').length,late:ar.filter(r=>actState(r)==='late').length,rows:ar.slice().sort((a,b)=>ord[actState(a)]-ord[actState(b)]||(a.due||'9').localeCompare(b.due||'9')).slice(0,12).map(r=>({id:actId(r),pb:r.pb||'',zone:r.zone||'',resp:r.resp||'',due:r.due||'',state:actState(r)}))};
+  const actions={open:ar.length,crit:ar.filter(r=>r.crit==='urg').length,late:ar.filter(r=>actState(r)==='late').length,rows:ar.slice().sort((a,b)=>ord[actState(a)]-ord[actState(b)]||(a.due||'9').localeCompare(b.due||'9')).map(r=>({id:actId(r),pb:r.pb||'',act:r.act||'',dec:r.dec||'',pole:POLE[actPole(r)]?.short||'',zone:r.zone||'',resp:r.resp||'',due:r.due||'',state:actState(r)})),doneToday:suivi.rows.filter(r=>r.st==='done'&&r.res===day).length};
   const GR={ok:'Mineur',fix:'Moyen',urg:'Bloquant'};
-  const tech=(state.regs.tech||[]).filter(r=>r.pb).slice(0,12).map(r=>({h:r.h||'',zone:r.zone||'',pb:r.pb,grav:GR[r.grav]||'',resp:r.tech||'',action:r.action||''}));
+  const tech=(state.regs.tech||[]).filter(r=>r.pb).map(r=>({h:r.h||'',zone:r.zone||'',pb:r.pb,grav:GR[r.grav]||'',resp:r.tech||'',action:r.action||''}));
   const tot=bilanTotals(state.bilan);const syn=state.bilan.syn||{};
   const bilan={pass:tot.pass??null,net:tot.net??null,bien:syn.bien||'',diff:syn.diff||'',ouv:syn.ouv||'',prio:syn.prio||'',com:syn.com||''};
-  return {date:day,cls,poles,staff,clientes,actions,tech,bilan};
+  return {date:day,cls,poles,staff,clientes,actions,tech,bilan,full:buildFull()};
+}
+/* détail complet de la journée, en blocs génériques (table / cards / kv) pour l'e-mail */
+function buildFull(){
+  const out=[];const SL={ok:'OK',fix:'À corriger',urg:'Urgent',na:'N/A'};
+  const kinds=['open','assia','ferm'];if(Object.keys(week.items||{}).length)kinds.push('hebdo');
+  kinds.forEach(k=>{const c=CL[k],items=itemsOf(k);const z=new Map();
+    c.sections.forEach((sec,zi)=>sec[1].forEach((_,i)=>{const name=k==='ferm'?(itemZone(k,zi,i)||'Fermeture'):nice(sec[0]);let t=z.get(name);if(!t){t={n:0,ok:0,fix:0,urg:0,na:0};z.set(name,t)}t.n++;const it=items[c.base[zi]+i];if(it&&it.s)t[it.s]++}));
+    out.push({title:c.title+(k==='hebdo'?' — '+weekLabel(day):'')+' · détail par zone',kind:'table',head:['Zone','Contrôlés',c.labels.ok,c.labels.fix,c.labels.urg].concat(c.na?['N/A']:[]),rows:[...z].map(([name,t])=>[name,(t.ok+t.fix+t.urg+t.na)+'/'+t.n,t.ok,t.fix,t.urg].concat(c.na?[t.na]:[]))});
+    const sy=synthOf(k)||{};const kv=c.fields.map(f=>[f[1],f[2]==='date'?fmtDate(sy[f[0]]||''):(sy[f[0]]||'')]).concat([['Notes',sy.notes||'']]).filter(r=>r[1]);
+    if(kv.length)out.push({title:c.title+' · informations',kind:'kv',rows:kv});
+    if(k==='hebdo'){const an=[];for(const gi in items){const it=items[gi];if(it.s!=='fix'&&it.s!=='urg')continue;const [zi,i]=locate(k,+gi);an.push({title:(it.s==='urg'?'Urgent':'À corriger')+' — '+nice(c.sections[zi][0]),lines:[['Point',itemText(k,zi,i)],['Observation',it.o||''],['Action',it.a||''],['Responsable',it.r||'']].filter(l=>l[1])})}if(an.length)out.push({title:'Contrôle hebdomadaire · anomalies',kind:'cards',rows:an})}
+  });
+  const PS={ok:'Présent',late:'En retard',abs:'Absent','':'Non pointé'};
+  const st=team.rows.filter(m=>fullName(m)).map(m=>{const r=staffRow(m);const q=pStatus(r);return [fullName(m),m.sec+(m.fonction?' · '+m.fonction:''),PS[q]+(r&&r.arr&&q&&q!=='abs'?' ('+r.arr.replace(':','h')+')':'')]});
+  if(st.length)out.push({title:'Équipe · pointage nominatif',kind:'table',head:['Nom','Service','Pointage'],rows:st});
+  const cell=(col,r)=>{const [k,,type,extra]=col;let v=r[k];if(type==='check')return v===true?'Oui':v===false?'Non':'';if(type==='calc'){const a=num(r.reel),b=num(r.theo);return a===null||b===null?'':String(a-b)}if(type==='st3')return SL[v]||'';if(type==='select'){const o=(extra||[]).find(o=>o[0]===v);return v&&o?o[1]:''}if(type==='multi')return Array.isArray(v)?v.join(', '):(v||'');if(type==='date')return fmtDate(v||'');if(type==='time')return v?String(v).replace(':','h'):'';return v===undefined||v===null?'':String(v)};
+  ['brief','ctrl','stock'].forEach(key=>{const R=REGS[key];const rows=(state.regs[key]||[]).map(r=>{const lines=R.cols.map(c=>[c[1],cell(c,r)]).filter(l=>l[1]!=='');if(!lines.length)return null;const sv=R.sev?R.sev(r):'';return {title:lines[0][1]+(lines[1]?' — '+lines[1][1]:''),sev:sv||'',lines:lines.slice(2)}}).filter(Boolean);if(rows.length)out.push({title:R.title,kind:'cards',rows})});
+  const fr=(state.regs.client||[]).slice().sort((a,b)=>(a.h||'').localeCompare(b.h||''));
+  if(fr.length)out.push({title:'Clientes du jour · liste complète',kind:'cards',rows:fr.map(f=>{const stp=ficheSteps(f).slice().sort((a,b)=>(a.time||'').localeCompare(b.time||'')).map(x=>(x.time?x.time.replace(':','h')+' ':'')+x.act).join(' · ');const v=VENUES.find(v=>v[0]===f.venue);
+    return {title:(f.bracelet?'N° '+f.bracelet+' — ':'')+ficheName(f),lines:[['Arrivée',f.h?f.h.replace(':','h'):''],['Départ',f.dep?f.dep.replace(':','h'):''],['Venue',v?v[1]:''],['Programme',stp],['Dépense',num(f.montant)!==null?fmt(num(f.montant))+' DH':''],['Statut',ficheStatus(f)[1]]].filter(l=>l[1])}})});
+  const B=state.bilan,tot=bilanTotals(B);const cols=CACOLS.filter(c=>c[0]!=='obs');
+  const ca=SECTORS.map(sn=>{const r=B.ca[sn]||{};const c=caRow(r);const vals=cols.map(([k,,calc])=>calc?(k==='net'?c.net:c.ecart):num(r[k]));return vals.some(v=>v!==null)||r.obs?{title:sn,lines:cols.map((c,i)=>[c[1],vals[i]===null?'':fmt(vals[i])]).concat([['Observation',r.obs||'']]).filter(l=>l[1]!=='')}:null}).filter(Boolean);
+  if(ca.length){ca.push({title:'TOTAL',sev:'ok',lines:cols.map(c=>[c[1],tot[c[0]]===undefined?'':fmt(tot[c[0]])]).filter(l=>l[1]!=='')});out.push({title:"Bilan · activité et chiffre d'affaires par secteur (DH)",kind:'cards',rows:ca})}
+  BILAN_SECTIONS.forEach(([key,title,cs])=>{const o=B[key]||{};const kv=cs.filter(c=>c[2]!=='hint').map(c=>{let v=o[c[0]];if(c[2]==='select'){const x=(c[3]||[]).find(x=>x[0]===v);v=v&&x?x[1]:''}return [c[1],v===undefined||v===null?'':String(v)]}).filter(r=>r[1]!=='');if(kv.length)out.push({title:'Bilan · '+title.replace(/^\d+\.\s*/,''),kind:'kv',rows:kv})});
+  if(B.sent)out.push({title:'Bilan · envoi',kind:'kv',rows:[['Bilan envoyé à Inès à',B.sent.replace(':','h')]]});
+  return out;
 }
 function flush(){
   if(!db)return;const jobs=[];const stamp=o=>{o.updatedAt=new Date().toISOString();return o};
-  if(dirty||dirtySuivi||dirtyTeam){try{const r=buildResume();const j=JSON.stringify(r);if(j!==lastResume){lastResume=j;jobs.push(()=>db.doc('jours/jour-'+r.date+'/parts/resume').set(stamp(JSON.parse(j))))}}catch(e){console.warn('resume',e)}}
+  if(dirty||dirtySuivi||dirtyTeam||dirtyWeek){try{const r=buildResume();const j=JSON.stringify(r);if(j!==lastResume){lastResume=j;jobs.push(()=>db.doc('jours/jour-'+r.date+'/parts/resume').set(stamp(JSON.parse(j))))}}catch(e){console.warn('resume',e)}}
   if(dirty){dirty=false;const d=day;for(const k of PARTS){const j=JSON.stringify(partGet(k));if(lastWritten[k]===j)continue;lastWritten[k]=j;const body=stamp(JSON.parse(j));body.date=d;body.part=k;jobs.push(()=>db.doc('jours/jour-'+d+'/parts/'+k).set(body))}}
   if(dirtyWeek){dirtyWeek=false;const wk=curWeek,body=stamp(JSON.parse(JSON.stringify(week)));body.week=wk;jobs.push(()=>db.doc('semaines/'+wk).set(body))}
   if(dirtySuivi){dirtySuivi=false;jobs.push(()=>db.doc('suivi/actions').set(stamp(JSON.parse(JSON.stringify(suivi)))))}
