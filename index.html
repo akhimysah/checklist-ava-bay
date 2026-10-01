@@ -584,8 +584,28 @@ function persistCL(k){k==='hebdo'?persistWeek():persist()}
 function persistSuivi(){saveLocal();if(!db)return;dirtySuivi=true;schedule()}
 function persistTeam(){saveLocal();if(!db)return;dirtyTeam=true;schedule()}
 function persistClients(){saveLocal();if(!db)return;dirtyClients=true;schedule()}
+/* résumé du jour : lu par le serveur pour les comptes rendus e-mail de 11h et 20h */
+let lastResume='';
+function buildResume(){
+  const cls=['open','assia','ferm'].map(k=>{const c=CL[k],st=poleStats(k);const [vc,vt]=verdictOf(k,st,st.n);const an=[];const items=itemsOf(k);
+    for(const gi in items){const it=items[gi];if(it.s!=='fix'&&it.s!=='urg')continue;const [zi,i]=locate(k,+gi);an.push({s:it.s,pole:POLE[itemPole(k,zi,i)]?.short||'',zone:itemZone(k,zi,i)||nice(c.sections[zi][0]),t:itemText(k,zi,i).replace(/^QUESTION DIRECTION\s*:\s*/,''),o:it.o||'',a:it.a||'',r:it.r||'',rc:!!it.rc})}
+    const sy=synthOf(k)||{};
+    return {k,title:c.title,n:st.n,done:st.done,ok:st.ok,fix:st.fix,urg:st.urg,na:st.na,vc,vt,an,dec:sy.dec||'',notes:sy.notes||''}});
+  const poles=POLES.map(p=>{const t=sumStats(['open','assia'].map(k=>poleStats(k,p.id)));return {name:p.short,n:t.n||0,done:t.done||0,fix:t.fix||0,urg:t.urg||0}});
+  const staff={total:team.rows.length,ok:0,late:0,abs:0};team.rows.forEach(m=>{const q=pStatus(staffRow(m));if(q)staff[q]++});
+  const fr=state.regs.client||[];const RT={comp:'Compliment',recl:'Réclamation',dem:'Demande particulière',inc:'Incident',avis:'Avis en ligne'};
+  const clientes={n:fr.length,sent:fr.filter(f=>f.sentAt).length,depense:fr.reduce((a,f)=>a+(num(f.montant)||0),0),retours:fr.filter(f=>f.type).map(f=>({nom:ficheName(f),bracelet:f.bracelet||'',type:RT[f.type]||f.type,motif:f.motif||'',rep:f.rep||'',traite:f.st==='done'}))};
+  const ar=suivi.rows.filter(r=>r.st!=='done');const ord={urg:0,late:1,'':2};
+  const actions={open:ar.length,crit:ar.filter(r=>r.crit==='urg').length,late:ar.filter(r=>actState(r)==='late').length,rows:ar.slice().sort((a,b)=>ord[actState(a)]-ord[actState(b)]||(a.due||'9').localeCompare(b.due||'9')).slice(0,12).map(r=>({id:actId(r),pb:r.pb||'',zone:r.zone||'',resp:r.resp||'',due:r.due||'',state:actState(r)}))};
+  const GR={ok:'Mineur',fix:'Moyen',urg:'Bloquant'};
+  const tech=(state.regs.tech||[]).filter(r=>r.pb).slice(0,12).map(r=>({h:r.h||'',zone:r.zone||'',pb:r.pb,grav:GR[r.grav]||'',resp:r.tech||'',action:r.action||''}));
+  const tot=bilanTotals(state.bilan);const syn=state.bilan.syn||{};
+  const bilan={pass:tot.pass??null,net:tot.net??null,bien:syn.bien||'',diff:syn.diff||'',ouv:syn.ouv||'',prio:syn.prio||'',com:syn.com||''};
+  return {date:day,cls,poles,staff,clientes,actions,tech,bilan};
+}
 function flush(){
   if(!db)return;const jobs=[];const stamp=o=>{o.updatedAt=new Date().toISOString();return o};
+  if(dirty||dirtySuivi||dirtyTeam){try{const r=buildResume();const j=JSON.stringify(r);if(j!==lastResume){lastResume=j;jobs.push(()=>db.doc('jours/jour-'+r.date+'/parts/resume').set(stamp(JSON.parse(j))))}}catch(e){console.warn('resume',e)}}
   if(dirty){dirty=false;const d=day;for(const k of PARTS){const j=JSON.stringify(partGet(k));if(lastWritten[k]===j)continue;lastWritten[k]=j;const body=stamp(JSON.parse(j));body.date=d;body.part=k;jobs.push(()=>db.doc('jours/jour-'+d+'/parts/'+k).set(body))}}
   if(dirtyWeek){dirtyWeek=false;const wk=curWeek,body=stamp(JSON.parse(JSON.stringify(week)));body.week=wk;jobs.push(()=>db.doc('semaines/'+wk).set(body))}
   if(dirtySuivi){dirtySuivi=false;jobs.push(()=>db.doc('suivi/actions').set(stamp(JSON.parse(JSON.stringify(suivi)))))}
