@@ -375,6 +375,10 @@ table.ca tr.total td{padding:9px 8px;font-weight:700;border-top:2px solid var(--
 .multi{display:flex;flex-wrap:wrap;gap:6px;padding-top:2px}
 .multi button{font-size:12.5px;font-weight:500;padding:6px 11px;border-radius:999px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink-2);text-transform:none;letter-spacing:0;font-family:var(--fb)}
 .multi button[aria-pressed=true]{background:var(--pole);border-color:var(--pole);color:var(--pole-ink)}
+/* bandeau non synchronisé */
+#nosync{position:sticky;top:0;z-index:60;background:#9B2C1D;color:#fff;font-size:13.5px;line-height:1.4;padding:9px 16px;text-align:center}
+#nosync a{color:#fff;font-weight:700}
+#nosync button{margin-left:8px;background:#fff;color:#9B2C1D;border:0;border-radius:99px;padding:4px 12px;font-weight:700;font-size:12.5px;cursor:pointer}
 /* bracelet */
 .brn{display:inline-block;font-family:var(--fb,inherit);font-size:12.5px;font-weight:700;letter-spacing:.02em;padding:2px 9px;border-radius:999px;background:var(--pole);color:#fff;vertical-align:middle;white-space:nowrap}
 .brc input{font-weight:700;font-size:17px}
@@ -585,7 +589,7 @@ function persistSuivi(){saveLocal();if(!db)return;dirtySuivi=true;schedule()}
 function persistTeam(){saveLocal();if(!db)return;dirtyTeam=true;schedule()}
 function persistClients(){saveLocal();if(!db)return;dirtyClients=true;schedule()}
 /* résumé du jour : lu par le serveur pour les comptes rendus e-mail de 11h et 20h */
-let lastResume='';
+let lastResume='',forceResume=false;
 function buildResume(){
   const cls=['open','assia','ferm'].map(k=>{const c=CL[k],st=poleStats(k);const [vc,vt]=verdictOf(k,st,st.n);const an=[];const items=itemsOf(k);
     for(const gi in items){const it=items[gi];if(it.s!=='fix'&&it.s!=='urg')continue;const [zi,i]=locate(k,+gi);an.push({s:it.s,pole:POLE[itemPole(k,zi,i)]?.short||'',zone:itemZone(k,zi,i)||nice(c.sections[zi][0]),t:itemText(k,zi,i).replace(/^QUESTION DIRECTION\s*:\s*/,''),o:it.o||'',a:it.a||'',r:it.r||'',rc:!!it.rc})}
@@ -631,7 +635,7 @@ function buildFull(){
 }
 function flush(){
   if(!db)return;const jobs=[];const stamp=o=>{o.updatedAt=new Date().toISOString();return o};
-  if(dirty||dirtySuivi||dirtyTeam||dirtyWeek){try{const r=buildResume();const j=JSON.stringify(r);if(j!==lastResume){lastResume=j;jobs.push(()=>db.doc('jours/jour-'+r.date+'/parts/resume').set(stamp(JSON.parse(j))))}}catch(e){console.warn('resume',e)}}
+  if(dirty||dirtySuivi||dirtyTeam||dirtyWeek||forceResume){forceResume=false;try{const r=buildResume();const j=JSON.stringify(r);if(j!==lastResume){lastResume=j;jobs.push(()=>db.doc('jours/jour-'+r.date+'/parts/resume').set(stamp(JSON.parse(j))))}}catch(e){console.warn('resume',e)}}
   if(dirty){dirty=false;const d=day;for(const k of PARTS){const j=JSON.stringify(partGet(k));if(lastWritten[k]===j)continue;lastWritten[k]=j;const body=stamp(JSON.parse(j));body.date=d;body.part=k;jobs.push(()=>db.doc('jours/jour-'+d+'/parts/'+k).set(body))}}
   if(dirtyWeek){dirtyWeek=false;const wk=curWeek,body=stamp(JSON.parse(JSON.stringify(week)));body.week=wk;jobs.push(()=>db.doc('semaines/'+wk).set(body))}
   if(dirtySuivi){dirtySuivi=false;jobs.push(()=>db.doc('suivi/actions').set(stamp(JSON.parse(JSON.stringify(suivi)))))}
@@ -655,7 +659,8 @@ function subscribeDay(){
       }
     }
     if(changed){saveLocal();render()}
-    setSync('on','Synchronisé');
+    if(changed||lastResume===''){forceResume=true;clearTimeout(writeTimer);writeTimer=setTimeout(flush,1500)}
+    setSync('on','Synchronisé');syncBanner(true);
   },e=>{console.warn(e);setSync('','Hors ligne (local)')});
 }
 function loadWeek(){
@@ -1290,7 +1295,7 @@ function showGate(msg,setup){
     <input type="password" id="gcode" placeholder="Code d'accès" autocomplete="current-password">${setup?'<input type="password" id="gcode2" placeholder="Confirmer le code" autocomplete="new-password">':''}
     <button class="addbtn" id="gok">${setup?'Créer le code':'Ouvrir'}</button><button class="gskip" id="gskip">Continuer sans synchronisation</button></div>`;
   g.hidden=false;$('#gcode').focus();
-  $('#gskip').onclick=()=>{g.hidden=true};
+  $('#gskip').onclick=()=>{g.hidden=true;syncBanner(false)};
   $('#gok').onclick=async()=>{const c=$('#gcode').value.trim();
     if(setup){if(c.length<8)return showGate('Le code doit faire au moins 8 caractères.',true);if(c!==$('#gcode2').value.trim())return showGate('Les deux codes ne correspondent pas.',true);
       const r=await fetch('api.php?action=setup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:c})});if(!r.ok)return showGate('Création impossible ('+r.status+').',true)}
@@ -1300,16 +1305,22 @@ function showGate(msg,setup){
     g.hidden=true;connectServer()};
   $('#gcode').onkeydown=e=>{if(e.key==='Enter')$('#gok').click()};
 }
+function syncBanner(ok){let b=document.getElementById('nosync');
+  if(ok){if(b)b.remove();return}
+  if(!b){b=document.createElement('div');b.id='nosync';document.body.insertBefore(b,document.body.firstChild)}
+  b.innerHTML=SERVER_MODE?'⚠ <b>Non synchronisé</b> — ces saisies restent sur cet appareil et ne seront pas dans le compte rendu de 11h / 20h. <button type="button" id="nsgo">Saisir le code d\'accès</button>'
+    :'⚠ <b>Version de consultation</b> — les saisies faites ici ne sont pas dans le compte rendu de 11h / 20h. Utilisez <a href="https://checklist.avabay-marrakech.com">checklist.avabay-marrakech.com</a>';
+  const g=document.getElementById('nsgo');if(g)g.onclick=()=>showGate('')}
 async function connectServer(){db=serverDB();setSync('on','Synchronisé');subscribeDay();subscribeGlobals();curWeek='';loadWeek()}
 async function initServer(){
-  if(location.protocol!=='https:'){setSync('','Local (https en attente)');return}
+  if(location.protocol!=='https:'){location.replace('https://'+location.host+location.pathname);return}
   try{const st=await (await fetch('api.php?action=status',{cache:'no-store'})).json();
     if(st.setup)return showGate('',true);
     if(!accessCode())return showGate('');
     const t=await fetch('api.php?action=get&path=clients%2Fliste',{headers:{'X-Ava-Code':accessCode()},cache:'no-store'});
     if(t.status===401)return showGate('');
     connectServer();
-  }catch(e){setSync('','Hors ligne (local)')}
+  }catch(e){setSync('','Hors ligne (local)');syncBanner(false)}
 }
 
 /* ---------- boot ---------- */
@@ -1323,7 +1334,7 @@ function start(snap){
   window.claude?.hot?.snapshot?.(()=>({day,state,view,suivi,team,clients}));
   window.claude?.use?.('db').then(d=>{if(!d)return;db=d;subscribeDay();subscribeGlobals();curWeek='';loadWeek()}).catch(()=>{});
   window.claude?.use?.('assets').then(a=>{assets=a}).catch(()=>{});
-  if(SERVER_MODE)initServer();
+  if(SERVER_MODE)initServer();else syncBanner(false);
 }
 window.claude?.hot?.ready?window.claude.hot.ready(start):start(window.claude?.hot?.data);
 window.addEventListener('pagehide',flush);
