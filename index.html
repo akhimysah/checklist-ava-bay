@@ -966,6 +966,10 @@ const VENUES=[['seule','Seule'],['amie','Avec une amie'],['enfants','Avec ses en
 const VENUE_TXT={seule:'seule',amie:'une amie',enfants:'vos enfants',famille:'votre famille'};
 let fiche=null,ficheStep=1,ficheIntern=false,pickQ='',ficheQ='';
 function pickResults(){const q=pickQ.trim().toLowerCase();if(!q)return `<p class="note" style="margin:0">${clients.rows.length} clientes dans la base — tape quelques lettres ou chiffres pour la retrouver et pré-remplir sa fiche.</p>`;const qd=q.replace(/\D/g,'').replace(/^0+/,'');const res=clients.rows.filter(c=>[c.nom,c.email,c.social,c.snap,c.code].join(' ').toLowerCase().includes(q)||(qd.length>=3&&(c.tel||'').replace(/\D/g,'').includes(qd))).slice(0,8);return res.length?res.map(c=>`<button class="pkc" data-pick="${c.id}"><b>${esc(c.nom||'Sans nom')}</b><span>${esc([c.code,c.tel?waPretty(c.tel)||c.tel:'',c.social,c.segment&&c.segment!=='Prospect'?c.segment:''].filter(Boolean).join(' · '))}</span>${c.vip?'<span class="chip fix">VIP</span>':''}</button>`).join(''):'<p class="note" style="margin:0">Aucune cliente trouvée — remplis la fiche ci-dessous, elle sera ajoutée à la base.</p>'}
+/* anniversaire : saisie libre au clavier, jj/mm ou jj/mm/aaaa */
+function bdayShow(v){const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(v||'');return m?m[3]+'/'+m[2]+'/'+m[1]:(v||'')}
+function bdayMask(v){const d=v.replace(/\D/g,'').slice(0,8);return d.length>4?d.slice(0,2)+'/'+d.slice(2,4)+'/'+d.slice(4):d.length>2?d.slice(0,2)+'/'+d.slice(2):d}
+function bdayStore(v){const m=/^(\d{2})\/(\d{2})\/(\d{4})$/.exec(v);return m?m[3]+'-'+m[2]+'-'+m[1]:v}
 const fichesToday=()=>state.regs.client;
 function ficheSteps(f){return f.steps||(f.steps=[])}
 function ficheName(f){return [f.prenom,f.nom].filter(Boolean).join(' ')||f.nomComplet||'Cliente'}
@@ -1019,7 +1023,7 @@ function renderFicheBuilder(f){
       <label class="m">E-mail<input type="email" data-fk="email" value="${esc(f.email||'')}"></label>
       <label class="h">Instagram ou TikTok <span style="font-weight:400;text-transform:none;letter-spacing:0">(facultatif)</span><input data-fk="social" value="${esc(f.social||'')}" placeholder="@…"></label>
       <label class="s">Heure d'arrivée<input type="time" data-fk="h" value="${esc(f.h||'')}"></label>
-      <label class="m">Date d'anniversaire<input type="date" data-fk="bday" value="${esc(f.bday||'')}"></label>
+      <label class="m">Date d'anniversaire<input type="text" data-fk="bday" value="${esc(bdayShow(f.bday))}" placeholder="jj/mm ou jj/mm/aaaa" inputmode="numeric" maxlength="10" autocomplete="off"></label>
       <label class="wide">Elle est venue<div class="multi">${VENUES.map(([v,l])=>`<button type="button" data-venue="${v}" aria-pressed="${f.venue===v}">${l}</button>`).join('')}</div></label></div>
       <div class="fnav"><span></span><button class="addbtn" data-fstep="2">Préparer sa journée →</button></div></div>`;
   }else if(ficheStep===2){
@@ -1076,7 +1080,7 @@ function renderClients(){
       ${opn?`<div class="ce"><div class="fields">
         <label class="m">Nom complet<input data-c="nom" value="${esc(c.nom||'')}"></label><label class="m">Téléphone<input type="tel" data-c="tel" value="${esc(c.tel||'')}" inputmode="tel"></label><label class="m">E-mail<input type="email" data-c="email" value="${esc(c.email||'')}"></label>
         <label class="m">Instagram<input data-c="social" value="${esc(c.social||'')}" placeholder="@…"></label><label class="m">Snapchat<input data-c="snap" value="${esc(c.snap||'')}"></label><label class="m">TikTok<input data-c="tiktok" value="${esc(c.tiktok||'')}"></label><label class="m">Facebook<input data-c="fb" value="${esc(c.fb||'')}"></label>
-        <label class="m">Profil<input data-c="segment" list="seglist" value="${esc(c.segment||'')}" placeholder="Prospect, Influenceuse…"></label><label class="m">Localisation<input data-c="loc" list="loclist" value="${esc(c.loc||'')}" placeholder="Locale, Expatriée…"></label><label class="chk"><input type="checkbox" data-c="verify" ${c.verify?'checked':''}>À vérifier</label><label class="s">Anniversaire<input type="date" data-c="bday" value="${esc(c.bday||'')}"></label><label class="chk"><input type="checkbox" data-c="vip" ${c.vip?'checked':''}>VIP / habituée</label>
+        <label class="m">Profil<input data-c="segment" list="seglist" value="${esc(c.segment||'')}" placeholder="Prospect, Influenceuse…"></label><label class="m">Localisation<input data-c="loc" list="loclist" value="${esc(c.loc||'')}" placeholder="Locale, Expatriée…"></label><label class="chk"><input type="checkbox" data-c="verify" ${c.verify?'checked':''}>À vérifier</label><label class="s">Anniversaire<input type="text" data-c="bday" value="${esc(bdayShow(c.bday))}" placeholder="jj/mm ou jj/mm/aaaa" inputmode="numeric" maxlength="10" autocomplete="off"></label><label class="chk"><input type="checkbox" data-c="vip" ${c.vip?'checked':''}>VIP / habituée</label>
         <label class="wide">Préférences, allergies, habitudes<input data-c="pref" value="${esc(c.pref||'')}" placeholder="Soin préféré, table habituelle, allergie…"></label><label class="wide">Notes<textarea data-c="notes" placeholder="Remarques, enfants, ce qu'elle aime…">${esc(c.notes||'')}</textarea></label></div>
         <div class="hist2">${v.length?`<h4>Historique des visites</h4>${v.map(x=>`<div class="hv"><b>${fmtDate(x.date)}</b><span>${x.acts&&x.acts.length?esc(x.acts.join(' · ')):'visite'}</span>${x.montant?`<span class="num">${esc(x.montant)} DH</span>`:''}${x.type?`<span class="chip ${CTYPE[x.type]?.[1]||''}">${CTYPE[x.type]?.[0]||''}${x.motif?' — '+esc(String(x.motif).slice(0,50)):''}</span>`:''}</div>`).join('')}`:'<p class="note" style="margin:0">Aucune visite enregistrée.</p>'}</div>
         <div class="confirm"><button class="pill" data-newfrom="${c.id}">+ Fiche du jour pour cette cliente</button><span style="flex:1"></span><button class="danger" data-delclient="${c.id}">Supprimer la cliente</button><button data-closecl>Fermer</button></div></div>`:''}</div>`};
@@ -1195,11 +1199,12 @@ V.addEventListener('click',e=>{
 V.addEventListener('click',e=>{const wa=e.target.closest('a[data-sendwa]');if(wa){if(wa.dataset.sendwa!=='1'){e.preventDefault();const h=$('#waHint');if(h){h.hidden=false;h.style.color='var(--urg)';h.style.fontWeight='600'}return}const f=fichesToday().find(r=>r.id===fiche);wa.setAttribute('href',waLink(f));f.saved=true;f.sentAt=new Date().toTimeString().slice(0,5);upsertClient(f);persist();setTimeout(render,300);return}const sm=e.target.closest('.a .sum');if(sm&&!e.target.closest('select')){const id=sm.dataset.open;suiviOpen.has(id)?suiviOpen.delete(id):suiviOpen.add(id);render()}});
 V.addEventListener('input',e=>{
   const t=e.target;const D=t.dataset;
+  if((D.fk==='bday'||D.c==='bday')&&!/^delete/.test(e.inputType||'')){const m=bdayMask(t.value);if(m!==t.value)t.value=m}
   if(t.id==='q'){query=t.value.trim();rerenderKeepFocus();return}
   if(t.id==='clientQ'){clientQ=t.value;rerenderKeepFocus();return}
   if(t.id==='ficheQ'){ficheQ=t.value;const el=$('#fcs');if(el)el.innerHTML=ficheCards();return}
   if(t.id==='pickQ'){pickQ=t.value;const el=$('#picks');if(el)el.innerHTML=pickResults();return}
-  if(D.fk){const f=fichesToday().find(r=>r.id===fiche);if(!f)return;f[D.fk]=t.value;if(D.fk==='prenom'||D.fk==='nom')f.nomComplet=ficheName(f);persist();if(['montant','type','motif','dep'].includes(D.fk)&&f.saved)upsertClient(f);return}
+  if(D.fk){const f=fichesToday().find(r=>r.id===fiche);if(!f)return;f[D.fk]=D.fk==='bday'?bdayStore(t.value):t.value;if(D.fk==='prenom'||D.fk==='nom')f.nomComplet=ficheName(f);persist();if(['montant','type','motif','dep'].includes(D.fk)&&f.saved)upsertClient(f);return}
   if(D.sk){const f=fichesToday().find(r=>r.id===fiche);const x=ficheSteps(f).find(x=>x.id===t.closest('.pstep').dataset.sid);if(!x)return;x[D.sk]=t.type==='checkbox'?t.checked:t.value;persist();return}
   if(D.f){const it=t.closest('.item');const k=it.dataset.k,gi=+it.dataset.gi;const o=item(k,gi);const v=D.f==='rc'?t.checked:t.value;if(v)o[D.f]=v;else delete o[D.f];persistCL(k);if(D.f==='rc')render();return}
   if(D.sf){const k=t.closest('[data-rep]').dataset.rep;synthOf(k)[D.sf]=t.value;persistCL(k);return}
@@ -1210,7 +1215,7 @@ V.addEventListener('input',e=>{
   if(D.m){const mid=t.closest('.member').dataset.mid;const m=team.rows.find(x=>x.id===mid);m[D.m]=t.value;persistTeam();return}
   const act=t.closest('.a');
   if(act&&D.k){const row=suivi.rows.find(r=>r.id===act.dataset.id);if(!row)return;row[D.k]=t.value;if(D.k==='st'&&row.st==='done'&&!row.res)row.res=todayISO();persistSuivi();act.className='a g-'+actState(row);if(D.k==='st')t.className='v-'+row.st;return}
-  if(D.c){const c=clients.rows.find(r=>r.id===t.closest('.cl').dataset.cid);if(!c)return;c[D.c]=t.type==='checkbox'?t.checked:t.value;persistClients();if(D.c==='vip')t.closest('.cl').classList.toggle('vip',c.vip);return}
+  if(D.c){const c=clients.rows.find(r=>r.id===t.closest('.cl').dataset.cid);if(!c)return;c[D.c]=t.type==='checkbox'?t.checked:D.c==='bday'?bdayStore(t.value):t.value;persistClients();if(D.c==='vip')t.closest('.cl').classList.toggle('vip',c.vip);return}
   if(D.ca){const tr=t.closest('tr'),sn=tr.dataset.sec;const B=state.bilan;(B.ca[sn]||(B.ca[sn]={}))[D.ca]=t.value;persist();const {net,ecart}=caRow(B.ca[sn]);const tds=tr.querySelectorAll('td.calc');tds[0].textContent=fmt(net);tds[1].textContent=fmt(ecart);tds[1].classList.toggle('neg',ecart!==null&&Math.abs(ecart)>0.005);tds[1].classList.toggle('zero',ecart!==null&&Math.abs(ecart)<=0.005);const tot=bilanTotals(B);const tt=V.querySelector('tr.total').querySelectorAll('td');CACOLS.forEach(([k],i)=>{if(k!=='obs')tt[i+1].textContent=fmt(tot[k]??null)});return}
   const bs=t.closest('[data-bs]');if(bs&&D.k){const B=state.bilan;(B[bs.dataset.bs]||(B[bs.dataset.bs]={}))[D.k]=t.value;persist();return}
   if(t.id==='bilanSent'){state.bilan.sent=t.value;persist();return}
