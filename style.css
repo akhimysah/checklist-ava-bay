@@ -247,6 +247,18 @@ button.kpi[aria-pressed=true]{outline:2px solid var(--pole);outline-offset:-2px}
 /* CA table */
 .tblwrap{overflow-x:auto;margin:0 -16px;padding:0 16px}
 table.ca{border-collapse:collapse;font-size:13px;min-width:1040px;width:100%}
+table.ca.compact{min-width:720px}
+table.ca.compact input{min-width:64px;padding:9px 6px}
+table.ca.compact th:first-child,table.ca.compact td:first-child{min-width:130px}
+table.ca.ro td{padding:7px 8px}
+table.ca td.calc{padding:0 8px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+table.ca td.neg{color:var(--urg);font-weight:700}
+table.ca td.zero{color:var(--ok)}
+table.ca tr.total td{font-weight:700;background:var(--surface-2);padding:8px}
+.zone[data-zkey=ca] .items{padding:12px}
+.zone[data-zkey=ca] .item{display:block;padding:0;border-top:0}
+.zone[data-zkey=ca] label.wide{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
+.zone[data-zkey=ca] label.wide input{display:block;width:100%;margin-top:4px;font:inherit;font-size:14px;letter-spacing:0;text-transform:none}
 table.ca th{padding:8px 6px;background:var(--surface-2);border-bottom:1px solid var(--line);font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-3);font-weight:700;text-align:right;white-space:nowrap}
 table.ca th.grp{text-align:center;font-size:10px;letter-spacing:.1em;color:var(--ink-2);border-left:1px solid var(--line);background:var(--surface)}
 table.ca th.grp:first-child{border-left:0}
