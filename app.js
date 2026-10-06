@@ -57,11 +57,11 @@ let dirty=false,dirtyTeam=false,dirtyClients=false,writeTimer=null,writing=Promi
 let photos={};try{photos=JSON.parse(localStorage.getItem(LS+'photos')||'{}')}catch(e){}
 const MAX_PHOTOS=4;
 
-function blank(){return {regs:{staff:[],client:[]},checks:{items:{}},bilan:{note:''},ca:{rows:{},obs:''}}}
-function norm(o){const b=blank();o=o||{};return {regs:{staff:o.regs?.staff||[],client:o.regs?.client||[]},checks:{items:o.checks?.items||{}},bilan:Object.assign(b.bilan,o.bilan||{}),ca:{rows:o.ca?.rows||{},obs:o.ca?.obs||''}}}
+function blank(){return {regs:{staff:[],client:[]},checks:{items:{}},bilan:{note:''},ca:{}}}
+function norm(o){const b=blank();o=o||{};return {regs:{staff:o.regs?.staff||[],client:o.regs?.client||[]},checks:{items:o.checks?.items||{}},bilan:Object.assign(b.bilan,o.bilan||{}),ca:Object.assign({},o.ca||{})}}
 const PARTS=['staff','checks','client','bilan','ca'];
 function partGet(k){if(k==='checks')return state.checks;if(k==='bilan')return state.bilan;if(k==='ca')return state.ca;return {rows:state.regs[k]||[]}}
-function partSet(k,d){d=d||{};if(k==='checks')state.checks={items:d.items||{}};else if(k==='ca')state.ca={rows:d.rows||{},obs:d.obs||''};else if(k==='bilan')state.bilan=Object.assign(blank().bilan,d);else state.regs[k]=d.rows||[]}
+function partSet(k,d){d=d||{};if(k==='checks')state.checks={items:d.items||{}};else if(k==='ca')state.ca=Object.assign({},d);else if(k==='bilan')state.bilan=Object.assign(blank().bilan,d);else state.regs[k]=d.rows||[]}
 let lastWritten={};
 const lsKey=d=>LS+'jour:'+d;
 function checkOf(id){const it=state.checks.items;return it[id]||(it[id]={})}
@@ -90,7 +90,7 @@ function buildResume(){
     retours:fr.filter(f=>f.type).map(f=>({nom:ficheName(f),bracelet:f.bracelet||'',type:RT[f.type]||f.type,motif:f.motif||'',rep:f.rep||'',traite:f.st==='done'}))};
   const messages=fr.filter(f=>f.sentAt).map(f=>({nom:ficheName(f),tel:waPretty(f.tel)||f.tel||'',canal:'WhatsApp',sentAt:f.sentAt,body:waMessage(f)}));
   const bilan={note:state.bilan.note||''};
-  const cs2=caStats();const ca={filled:cs2.filled,obs:cs2.obs,tot:cs2.tot,rows:cs2.rows.filter(r=>r.filled).map(r=>({name:r.name,pass:r.pass,brut:r.brut,rem:r.rem,net:r.net,esp:r.esp,carte:r.carte,enc:r.enc,ecart:r.ecart}))};
+  const c2=caStats();const ca={pass:c2.pass,equipe:c2.equipe,equipeTotal:c2.equipeTotal,filled:c2.filled,n:c2.n,total:c2.total,rem:c2.rem,net:c2.net,esp:c2.esp,carte:c2.carte,enc:c2.enc,ecart:c2.ecart,objectif:c2.objectif,pctObj:c2.pctObj,obs:c2.obs,act:c2.act.filter(a=>a.v!==null).map(a=>({name:a.name,v:a.v}))};
   return {date:day,staff,checks,clientes,messages,bilan,ca,text:reportText({staff,checks,clientes,messages,bilan,ca})};
 }
 /* version texte du compte rendu (copie / partage) : sans emoji, l'essentiel d'abord, le reste regroupé */
@@ -119,11 +119,12 @@ function reportText(R){
     if(c.steps.length)L.push(`${i2}${c.steps.map(s=>`${s.time?hhmm(s.time)+' ':''}${s.act}${s.ok?' (confirmé)':''}`).join(' → ')}`);
     if(c.sentAt)L.push(`${i2}Programme envoyé sur WhatsApp à ${hhmm(c.sentAt)}`);
     if(c.type)L.push(`${i2}${c.type}${c.motif?' : '+c.motif:''}${c.rep?' — réponse : '+c.rep:''} · ${c.traite?'traité':'à traiter'}`)});
-  const ca=R.ca||{rows:[],tot:{}};const dh=v=>v===null||v===undefined?'—':fmt(v)+' DH';
-  L.push('');T('Fréquentation & chiffre d\'affaires',ca.rows.length?`${ca.tot.pass!==null?ca.tot.pass+' cliente'+(ca.tot.pass>1?'s':'')+' · ':''}CA net ${dh(ca.tot.net)}`:'');
-  if(!ca.rows.length)L.push(i1+'Non renseigné.');
-  ca.rows.forEach(r=>L.push(`${i1}${r.name} : ${r.pass!==null?r.pass+' cliente'+(r.pass>1?'s':'')+' · ':''}brut ${dh(r.brut)}${r.rem?' · remises '+dh(r.rem):''} · net ${dh(r.net)}${r.enc!==null?' · encaissé '+dh(r.enc)+' (esp. '+dh(r.esp)+', carte '+dh(r.carte)+')':''}${r.ecart?' · écart '+(r.ecart>0?'+':'')+dh(r.ecart):''}`));
-  if(ca.rows.length)L.push(`${i1}TOTAL : ${ca.tot.pass!==null?ca.tot.pass+' clientes · ':''}brut ${dh(ca.tot.brut)} · remises ${dh(ca.tot.rem)} · net ${dh(ca.tot.net)}${ca.tot.enc!==null?' · encaissé '+dh(ca.tot.enc)+' (esp. '+dh(ca.tot.esp)+', carte '+dh(ca.tot.carte)+')':''}${ca.tot.ecart?' · écart '+(ca.tot.ecart>0?'+':'')+dh(ca.tot.ecart):''}`);
+  const ca=R.ca||{act:[]};const dh=v=>v===null||v===undefined?'—':fmt(v)+' DH';
+  L.push('');T('Les chiffres utiles',`CA ${dh(ca.total)}${ca.objectif?` · objectif ${dh(ca.objectif)}${ca.pctObj!==null?' ('+ca.pctObj+' %)':''}`:''}`);
+  L.push(`${i1}Entrées clientes : ${ca.pass!==null&&ca.pass!==undefined?ca.pass:'—'} · Équipe présente : ${ca.equipe}/${ca.equipeTotal}`);
+  if(!ca.act.length)L.push(i1+'CA par activité : non renseigné.');
+  ca.act.forEach(a=>L.push(`${i1}${a.name} : ${dh(a.v)}`));
+  if(ca.act.length)L.push(`${i1}Total : ${dh(ca.total)}${ca.rem?' · remises '+dh(ca.rem)+' · net '+dh(ca.net):''}${ca.enc!==null?' · encaissé '+dh(ca.enc)+' (esp. '+dh(ca.esp)+', carte '+dh(ca.carte)+')':''}${ca.ecart?' · écart '+(ca.ecart>0?'+':'')+dh(ca.ecart):''}`);
   if(ca.obs)L.push(i1+'Observation : '+ca.obs);
   L.push('');T('Bilan / priorités de demain');L.push(i1+(R.bilan.note||'Non renseigné.').replace(/\n/g,'\n'+i1));
   return L.join('\n');
@@ -137,7 +138,7 @@ function flush(){
   if(!jobs.length)return;
   writing=writing.then(()=>Promise.all(jobs.map(j=>j()))).then(()=>{if(!dirty&&!dirtyTeam&&!dirtyClients)setSync('on','Synchronisé')}).catch(e=>{console.warn(e);setSync('','Hors ligne (local)')});
 }
-function hasData(st){return Object.keys(st.checks.items).length||st.regs.staff.length||st.regs.client.length||!!st.bilan.note||Object.keys(st.ca?.rows||{}).length}
+function hasData(st){return Object.keys(st.checks.items).length||st.regs.staff.length||st.regs.client.length||!!st.bilan.note||Object.keys(st.ca||{}).length}
 function subscribeDay(){
   if(dbUnsub){dbUnsub();dbUnsub=null}if(!db)return;
   const d=day;lastWritten={};let first=true;
@@ -168,11 +169,14 @@ const fullName=m=>[m.prenom,m.nom].filter(Boolean).join(' ');
 function staffRow(m){const n=fullName(m);return state.regs.staff.find(r=>r.mid===m.id)||state.regs.staff.find(r=>!r.mid&&r.nom===n)||null}
 function pStatus(r){if(!r)return '';if(r.np)return 'np';if(r.present===false)return 'abs';if(r.retard)return 'late';if(r.present)return 'ok';return ''}
 /* fréquentation et chiffre d'affaires par secteur */
-const SECTORS=['Entrées & piscine','Spa & massage','Hammam','Coiffure & brushing','Manucure & beauté','Restauration & bar','Coworking','Kids / AVA Land','Autres'];
-const CAF=[['pass','Clientes','Nb'],['brut','CA brut','DH'],['rem','Remises','DH'],['esp','Espèces','DH'],['carte','Carte','DH']];
+/* les chiffres utiles : entrées, équipe, CA par activité, objectif */
+const ACTS=[['club','Club & abonnements'],['piscine','Piscine & loisirs'],['resto','Restauration'],['sport','Sport & cours'],['spa','Spa, hammam & beauté'],['kids','AVA LAND & anniversaires'],['priv','Privatisations'],['autres','Autres revenus']];
 const numc=v=>num(typeof v==='string'?v.replace(/\s/g,'').replace(',','.'):v);
-function caRow(sn){const r=state.ca.rows[sn]||{};const o={};CAF.forEach(([k])=>o[k]=numc(r[k]));o.filled=CAF.some(([k])=>o[k]!==null);o.net=o.brut===null&&o.rem===null?null:(o.brut||0)-(o.rem||0);o.enc=o.esp===null&&o.carte===null?null:(o.esp||0)+(o.carte||0);o.ecart=o.enc===null||o.net===null?null:o.enc-o.net;return o}
-function caStats(){const rows=SECTORS.map(sn=>Object.assign({name:sn},caRow(sn)));const tot={pass:null,brut:null,rem:null,net:null,esp:null,carte:null,enc:null};rows.forEach(r=>{for(const k in tot)if(r[k]!==null)tot[k]=(tot[k]||0)+r[k]});tot.ecart=tot.enc===null||tot.net===null?null:tot.enc-tot.net;return {rows,tot,filled:rows.filter(r=>r.filled).length,obs:state.ca.obs||''}}
+function lastObjectif(){try{return localStorage.getItem(LS+'objectif')||''}catch(e){return ''}}
+function caStats(){const c=state.ca||{};const act=ACTS.map(([k,l])=>({k,name:l,v:numc((c.act||{})[k])}));const filled=act.filter(a=>a.v!==null);const total=filled.length?filled.reduce((a,x)=>a+x.v,0):null;
+  const esp=numc(c.esp),carte=numc(c.carte),rem=numc(c.rem);const enc=esp===null&&carte===null?null:(esp||0)+(carte||0);const net=total===null?null:total-(rem||0);const ecart=enc===null||net===null?null:enc-net;
+  const obj=numc(c.objectif)??numc(lastObjectif());const pctObj=obj&&total!==null?Math.round(total/obj*100):null;const ss=staffStats();
+  return {pass:numc(c.pass),equipe:ss.ok+ss.late,equipeTotal:ss.total,act,filled:filled.length,n:ACTS.length,total,rem,net,esp,carte,enc,ecart,objectif:obj,pctObj,obs:c.obs||''}}
 function staffStats(){const t={total:0,ok:0,late:0,abs:0,np:0,todo:0};team.rows.forEach(m=>{if(!fullName(m))return;t.total++;const q=pStatus(staffRow(m));if(q)t[q]++;else t.todo++});return t}
 
 /* ---------- rendu ---------- */
@@ -204,13 +208,21 @@ function renderJour(){
   const staffZone=zoneHtml('staff','Présence du personnel','Équipe',sz,staffRows+`<div class="item" style="display:flex;gap:8px;flex-wrap:wrap"><button class="pill" data-addmember>+ Ajouter du personnel</button>${ss.todo?`<button class="pill ok" data-allpresent>Tous présents (${ss.todo} restant${ss.todo>1?'s':''})</button>`:''}</div>`,!open.has('staff'),'',`<button class="allok addp" data-addmember>+ Ajouter du personnel</button>`);
   /* propreté / mise en place */
   const zones=(()=>{const z=checkStats();const rows=CHECKS.map(g=>{const gz=checkStats(g.id);return `<div class="tsec-in"><h4 class="tsub">${esc(g.title)} <span class="n">${gz.done}/${gz.n}</span></h4>${g.items.map(([id])=>checkItem(CHECK_ITEMS[id])).join('')}</div>`}).join('');return zoneHtml('spaces','Contrôle des espaces','Espaces',{n:z.n,done:z.done,ok:z.ok,fix:z.fix,urg:0},rows,!open.has('spaces'),z.done<z.n?'data-allok="all"':'')})();
-  const caz=(()=>{const c=caStats();const cell=(sn,k,i,unit)=>`<td><input type="text" inputmode="decimal" id="ca-${i}-${k}" data-ca="${esc(sn)}" data-caf="${k}" value="${esc(state.ca.rows[sn]?.[k]??'')}" placeholder="·" aria-label="${esc(sn)} ${unit}"></td>`;
-    const money=v=>v===null?'—':fmt(v);const tr=c.rows.map((r,i)=>`<tr><td>${esc(r.name)}</td>${CAF.map(([k,,u])=>cell(r.name,k,i,u)).join('')}<td class="calc num">${money(r.net)}</td><td class="calc num">${money(r.enc)}</td><td class="calc num ${r.ecart!==null?(Math.abs(r.ecart)>0.005?'neg':'zero'):''}">${r.ecart!==null&&r.ecart>0?'+':''}${money(r.ecart)}</td></tr>`).join('');
-    const T=c.tot;const tot=`<tr class="total"><td>Total</td><td class="num">${money(T.pass)}</td><td class="num">${money(T.brut)}</td><td class="num">${money(T.rem)}</td><td class="num">${money(T.esp)}</td><td class="num">${money(T.carte)}</td><td class="num">${money(T.net)}</td><td class="num">${money(T.enc)}</td><td class="num ${T.ecart!==null&&Math.abs(T.ecart)>0.005?'neg':''}">${T.ecart!==null&&T.ecart>0?'+':''}${money(T.ecart)}</td></tr>`;
-    const rows=`<div class="item"><div class="tblwrap"><table class="ca compact"><thead><tr><th>Secteur</th><th>Clientes</th><th>CA brut</th><th>Remises</th><th>Espèces</th><th>Carte</th><th>CA net</th><th>Encaissé</th><th>Écart</th></tr></thead><tbody>${tr}${tot}</tbody></table></div>
-      <p class="note" style="margin:8px 0 0">Montants en DH. CA net = brut − remises. Écart = (espèces + carte) − CA net.</p>
-      <label class="wide" style="margin-top:8px">Observation<input id="ca-obs" data-caobs value="${esc(state.ca.obs||'')}" placeholder="Remarque sur la caisse, un écart…"></label></div>`;
-    return zoneHtml('ca','Clientes & chiffre d\'affaires','Caisse',{n:SECTORS.length,done:c.filled,ok:c.filled,fix:0,urg:0},rows,!open.has('ca'),'')})();
+  const caz=(()=>{const c=caStats();const inp=(k,v,ph,extra='')=>`<input type="text" inputmode="decimal" id="ca-${k}" data-cak="${k}" value="${esc(v??'')}" placeholder="${ph}" autocomplete="off" ${extra}>`;
+    const actOpen=open.has('ca-act')||c.filled>0,caisseOpen=open.has('ca-caisse')||c.esp!==null||c.carte!==null||c.rem!==null;
+    const rows=`<div class="item cu">
+      <div class="cu-hero"><span class="cu-lbl">Chiffre d'affaires saisi</span><b class="cu-big num">${c.total!==null?fmt(c.total):'—'} <small>DH</small></b><span class="cu-sub">${c.filled}/${c.n} activités renseignées${c.objectif?` · objectif ${fmt(c.objectif)} DH${c.pctObj!==null?' · <b>'+c.pctObj+' %</b>':''}`:''}</span>${c.objectif?`<span class="cu-bar"><i style="width:${Math.min(100,c.pctObj||0)}%"></i></span>`:''}</div>
+      <div class="cu-two"><label>Entrées clientes${inp('pass',state.ca.pass,'—')}</label><label>Équipe présente<output class="cu-out">${c.equipe}<small> / ${c.equipeTotal}</small></output></label></div>
+      <button type="button" class="cu-fold" data-cufold="ca-act" aria-expanded="${actOpen}">${actOpen?'▾':'▸'} Renseigner le CA par activité</button>
+      <div class="cu-list" ${actOpen?'':'hidden'}>${ACTS.map(([k,l])=>`<label>${esc(l)} <span class="cu-unit">(DH)</span>${inp('act-'+k,(state.ca.act||{})[k],'—')}</label>`).join('')}
+        <label>Objectif de CA <span class="cu-unit">(DH)</span>${inp('objectif',state.ca.objectif,lastObjectif()||'ex. 40000')}</label>
+        <p class="note" style="margin:4px 0 0">Case vide : donnée manquante. 0 : aucun CA réalisé. Le coworking est gratuit.</p></div>
+      <button type="button" class="cu-fold" data-cufold="ca-caisse" aria-expanded="${caisseOpen}">${caisseOpen?'▾':'▸'} Caisse <span class="cu-unit">(facultatif)</span></button>
+      <div class="cu-list" ${caisseOpen?'':'hidden'}><div class="cu-two"><label>Espèces <span class="cu-unit">(DH)</span>${inp('esp',state.ca.esp,'—')}</label><label>Carte <span class="cu-unit">(DH)</span>${inp('carte',state.ca.carte,'—')}</label></div>
+        <label>Remises <span class="cu-unit">(DH)</span>${inp('rem',state.ca.rem,'—')}</label>
+        <div class="cu-calc">${c.enc!==null?`Encaissé <b>${fmt(c.enc)} DH</b>`:''}${c.net!==null&&c.rem?` · CA net <b>${fmt(c.net)} DH</b>`:''}${c.ecart!==null?` · écart <b class="${Math.abs(c.ecart)>0.005?'neg':'ok'}">${c.ecart>0?'+':''}${fmt(c.ecart)} DH</b>`:''}</div>
+        <label>Observation${inp('obs',state.ca.obs,'Remarque sur la caisse, un écart…','style="font-size:14px"')}</label></div></div>`;
+    return zoneHtml('ca','Les chiffres utiles','Chiffres',{n:c.n+1,done:c.filled+(c.pass!==null?1:0),ok:c.filled+(c.pass!==null?1:0),fix:0,urg:0},rows,!open.has('ca'),'')})();
   const bilan=`<div class="card bilan"><div class="ch"><h3>Bilan / priorités du lendemain</h3><span class="chip ${state.bilan.note?'ok':''}">${state.bilan.note?'✓ renseigné':'à renseigner'}</span></div><textarea data-note placeholder="Une difficulté, une décision, une priorité pour demain…">${esc(state.bilan.note||'')}</textarea><p class="note" style="margin:0">Repris tel quel dans le compte rendu du jour.</p></div>`;
   const gocr=`<div class="gocr"><p><b>Compte rendu de la journée</b><br>Personnel, contrôle des espaces, parcours clientes, messages envoyés et bilan.</p><button class="addbtn" data-view="cr">Générer le compte rendu</button></div>`;
   return `${hero}${poleCards()}<div class="sec-title"><h3>Préparer la journée</h3><span>${cs.done}/${cs.n} points vérifiés · ${ss.total-ss.todo}/${ss.total} présences renseignées</span></div><div class="jour-grid">${staffZone}${zones}${caz}${bilan}${gocr}</div>`;
@@ -227,7 +239,7 @@ function poleCards(){
     {k:'setup',cls:'cui',color:'#C8742E',ic:PI.cui,name:'Mise en place',pc:pct(st.done,st.n),done:st.n&&st.done===st.n&&!st.fix,chips:[ch(`${st.ok}/${st.n-st.na} prêts`),st.fix?ch(`${st.fix} à corriger`,'fix'):'']},
     {k:'fiches',cls:'rec',color:'#93412A',ic:PI.rec,name:'Clientes du jour',pc:pct(sent,fr.length),done:fr.length&&sent===fr.length,chips:[ch(`${fr.length} cliente${fr.length>1?'s':''}`),sent?ch(`${sent} programme${sent>1?'s':''} envoyé${sent>1?'s':''}`,'ok'):'']},
     {k:'bilan',cls:'bea',color:'#B5607A',ic:PI.bea,name:'Bilan & priorités',pc:state.bilan.note?100:0,done:!!state.bilan.note,chips:[ch(state.bilan.note?'Renseigné':'À renseigner',state.bilan.note?'ok':'')]},
-    {k:'ca',cls:'ani',color:'#E0B04A',ic:PI.ani,name:'Clientes & chiffre d\'affaires',pc:pct(caStats().filled,SECTORS.length),done:caStats().filled===SECTORS.length,chips:[ch(caStats().tot.pass!==null?`${caStats().tot.pass} cliente${caStats().tot.pass>1?'s':''}`:'Clientes à relever'),caStats().tot.net!==null?ch(`${fmt(caStats().tot.net)} DH net`,'ok'):'']},
+    (()=>{const c=caStats();return {k:'ca',cls:'ani',color:'#E0B04A',ic:PI.ani,name:'Les chiffres utiles',pc:c.pctObj!==null?Math.min(100,c.pctObj):pct(c.filled,c.n),done:c.pctObj!==null&&c.pctObj>=100,chips:[ch(c.pass!==null?`${c.pass} entrée${c.pass>1?'s':''}`:'Entrées à relever'),c.total!==null?ch(`${fmt(c.total)} DH${c.objectif?' · '+c.pctObj+' % de l\'objectif':''}`,c.pctObj!==null&&c.pctObj>=100?'ok':''):'']}})(),
   ];
   return `<div class="poles">${cards.map(c=>`<button class="pcard ${c.cls} ${c.done?'done':''}" style="--pole:${c.color}" data-card="${c.k}">
     <div class="ph"><span class="ic">${c.ic}</span><svg class="ring" viewBox="0 0 46 46"><circle class="bg" cx="23" cy="23" r="18"/><circle class="fg" cx="23" cy="23" r="18" stroke-dasharray="${C}" stroke-dashoffset="${C*(1-c.pc/100)}"/><text x="23" y="27" text-anchor="middle">${c.pc}%</text></svg></div>
@@ -301,15 +313,19 @@ function renderCR(){
       (c.steps.length?`<div class="crextra">${c.steps.map(s=>esc((s.time?hhmm(s.time)+' ':'')+s.act)+(s.ok?' <i class="okm">'+I.check+'</i>':'')).join('<span class="arr">→</span>')}</div>`:'')
       +(c.type?`<div class="crextra ${bad?'bad':'good'}"><b>${esc(c.type)}</b>${c.motif?' : '+esc(c.motif):''}${c.rep?' — réponse : '+esc(c.rep):''} · ${c.traite?'traité':'à traiter'}</div>`:''))}).join(''):'<div class="empty">Aucune cliente renseignée aujourd\'hui.</div>';
   const chip=(n,cls='')=>`<span class="chip ${cls}">${n}</span>`;
-  const ca=R.ca;const money=v=>v===null||v===undefined?'—':fmt(v);
-  const caHtml=ca.rows.length?`<div class="tblwrap"><table class="ca compact ro"><thead><tr><th>Secteur</th><th>Clientes</th><th>CA brut</th><th>Remises</th><th>CA net</th><th>Espèces</th><th>Carte</th><th>Écart</th></tr></thead><tbody>${ca.rows.map(r=>`<tr><td>${esc(r.name)}</td><td class="num">${money(r.pass)}</td><td class="num">${money(r.brut)}</td><td class="num">${money(r.rem)}</td><td class="num"><b>${money(r.net)}</b></td><td class="num">${money(r.esp)}</td><td class="num">${money(r.carte)}</td><td class="num ${r.ecart&&Math.abs(r.ecart)>0.005?'neg':''}">${r.ecart>0?'+':''}${money(r.ecart)}</td></tr>`).join('')}<tr class="total"><td>Total</td><td class="num">${money(ca.tot.pass)}</td><td class="num">${money(ca.tot.brut)}</td><td class="num">${money(ca.tot.rem)}</td><td class="num">${money(ca.tot.net)}</td><td class="num">${money(ca.tot.esp)}</td><td class="num">${money(ca.tot.carte)}</td><td class="num ${ca.tot.ecart&&Math.abs(ca.tot.ecart)>0.005?'neg':''}">${ca.tot.ecart>0?'+':''}${money(ca.tot.ecart)}</td></tr></tbody></table></div>${ca.obs?`<p style="margin:8px 0 0"><b>Observation :</b> ${esc(ca.obs)}</p>`:''}`:'<div class="empty">Non renseigné — à relever dans l\'onglet Journée.</div>';
+  const ca=R.ca||{act:[]};const money=v=>v===null||v===undefined?'—':fmt(v);
+  const caHtml=`<div class="cu-hero"><span class="cu-lbl">Chiffre d'affaires saisi</span><b class="cu-big num">${money(ca.total)} <small>DH</small></b><span class="cu-sub">${ca.filled}/${ca.n} activités renseignées${ca.objectif?` · objectif ${fmt(ca.objectif)} DH${ca.pctObj!==null?' · <b>'+ca.pctObj+' %</b>':''}`:''}</span>${ca.objectif?`<span class="cu-bar"><i style="width:${Math.min(100,ca.pctObj||0)}%"></i></span>`:''}</div>
+    <div class="cu-two ro"><div><span class="cu-lbl">Entrées clientes</span><b class="num">${ca.pass!==null&&ca.pass!==undefined?ca.pass:'—'}</b></div><div><span class="cu-lbl">Équipe présente</span><b class="num">${ca.equipe}<small> / ${ca.equipeTotal}</small></b></div></div>
+    ${ca.act.length?`<table class="cu-tbl">${ca.act.map(a=>`<tr><td>${esc(a.name)}</td><td class="num">${money(a.v)} DH</td></tr>`).join('')}<tr class="total"><td>Total</td><td class="num">${money(ca.total)} DH</td></tr></table>`:'<div class="empty">CA par activité non renseigné.</div>'}
+    ${ca.enc!==null||ca.rem?`<p class="cu-calc" style="margin:8px 0 0">${ca.rem?`Remises <b>${money(ca.rem)} DH</b> · CA net <b>${money(ca.net)} DH</b>`:''}${ca.enc!==null?`${ca.rem?' · ':''}Encaissé <b>${money(ca.enc)} DH</b> (espèces ${money(ca.esp)}, carte ${money(ca.carte)})`:''}${ca.ecart!==null?` · écart <b class="${Math.abs(ca.ecart)>0.005?'neg':'ok'}">${ca.ecart>0?'+':''}${money(ca.ecart)} DH</b>`:''}</p>`:''}
+    ${ca.obs?`<p style="margin:8px 0 0"><b>Observation :</b> ${esc(ca.obs)}</p>`:''}`;
   return `<div class="card"><div class="ch"><h3>Compte rendu — ${longDate(day)}</h3><button class="pill" data-copy>Copier le texte</button>${navigator.share?'<button class="pill" data-share>Partager</button>':''}</div>
     <p class="note" style="margin:-6px 0 0">Généré à partir des saisies du jour. Sur le serveur AVA Bay, la même synthèse part par e-mail à 11h et 20h.</p>
-    <div class="kpis"><div class="kpi ${S.abs?'urg':S.late?'fix':'ok'}"><b class="num">${S.ok+S.late}/${S.total}</b><span>Présents</span><small>${S.late} retard${S.late>1?'s':''} · ${S.abs} absent${S.abs>1?'s':''}</small></div><div class="kpi ${C.fix?'fix':'ok'}"><b class="num">${C.ready}/${C.n-C.na}</b><span>Espaces prêts</span><small>${C.fix} à corriger · ${C.todo} à vérifier</small></div><div class="kpi pole"><b class="num">${ca.tot.pass!==null?ca.tot.pass:cl.n}</b><span>Clientes</span><small>${ca.tot.pass!==null?cl.n+' fiche'+(cl.n>1?'s':'')+' · ':''}${cl.sent} programme${cl.sent>1?'s':''} envoyé${cl.sent>1?'s':''}</small></div><div class="kpi ${ca.tot.ecart&&Math.abs(ca.tot.ecart)>0.005?'urg':ca.tot.net!==null?'ok':''}"><b class="num">${ca.tot.net!==null?fmt(ca.tot.net):'—'}</b><span>CA net (DH)</span><small>${ca.tot.enc!==null?'encaissé '+fmt(ca.tot.enc)+(ca.tot.ecart?' · écart '+(ca.tot.ecart>0?'+':'')+fmt(ca.tot.ecart):''):'à relever'}</small></div><div class="kpi ${cl.retours.some(r=>/Réclamation|Incident/.test(r.type))?'urg':''}"><b class="num">${cl.retours.length}</b><span>Retours</span><small>${cl.depense?fmt(cl.depense)+' DH de dépense':'—'}</small></div></div></div>
+    <div class="kpis"><div class="kpi ${S.abs?'urg':S.late?'fix':'ok'}"><b class="num">${S.ok+S.late}/${S.total}</b><span>Présents</span><small>${S.late} retard${S.late>1?'s':''} · ${S.abs} absent${S.abs>1?'s':''}</small></div><div class="kpi ${C.fix?'fix':'ok'}"><b class="num">${C.ready}/${C.n-C.na}</b><span>Espaces prêts</span><small>${C.fix} à corriger · ${C.todo} à vérifier</small></div><div class="kpi pole"><b class="num">${ca.pass!==null&&ca.pass!==undefined?ca.pass:cl.n}</b><span>Clientes</span><small>${cl.n} fiche${cl.n>1?'s':''} · ${cl.sent} programme${cl.sent>1?'s':''} envoyé${cl.sent>1?'s':''}</small></div><div class="kpi ${ca.pctObj!==null&&ca.pctObj>=100?'ok':ca.total!==null?'pole':''}"><b class="num">${ca.total!==null?fmt(ca.total):'—'}</b><span>CA (DH)</span><small>${ca.objectif?'objectif '+fmt(ca.objectif)+(ca.pctObj!==null?' · '+ca.pctObj+' %':''):ca.filled+'/'+ca.n+' activités'}</small></div><div class="kpi ${cl.retours.some(r=>/Réclamation|Incident/.test(r.type))?'urg':''}"><b class="num">${cl.retours.length}</b><span>Retours</span><small>${cl.depense?fmt(cl.depense)+' DH de dépense':'—'}</small></div></div></div>
     <div class="card">${head(I.users,'Personnel',chip(`${S.ok+S.late} présent${S.ok+S.late>1?'s':''} sur ${S.total}`,S.abs?'urg':S.late?'fix':'ok'))}<div class="crsec">${staff}</div></div>
     <div class="card">${head(I.spaces,'Contrôle des espaces',chip(`${C.ready}/${C.n-C.na} prêts`,C.fix?'fix':'ok'))}<div class="crsec">${spaces}</div></div>
     <div class="card">${head(I.client,'Clientes',chip(`${cl.n} fiche${cl.n>1?'s':''}${cl.sent?' · '+cl.sent+' envoi'+(cl.sent>1?'s':''):''}`,'pole'))}<div class="crsec">${clientes}</div></div>
-    <div class="card">${head(I.jour,'Clientes & chiffre d\'affaires',chip(ca.rows.length?`${ca.tot.pass!==null?ca.tot.pass+' clientes · ':''}${fmt(ca.tot.net)} DH net`:'à relever',ca.rows.length?'ok':''))}${caHtml}</div>
+    <div class="card">${head(I.jour,'Les chiffres utiles',chip(ca.total!==null?`${fmt(ca.total)} DH${ca.pctObj!==null?' · '+ca.pctObj+' %':''}`:'à relever',ca.pctObj!==null&&ca.pctObj>=100?'ok':ca.total!==null?'pole':''))}${caHtml}</div>
     <div class="card">${head(I.note,'Bilan / priorités de demain',chip(R.bilan.note?'renseigné':'à renseigner',R.bilan.note?'ok':''))}<p style="margin:0;white-space:pre-wrap">${esc(R.bilan.note)||'<span class="note">Non renseigné — à compléter dans l\'onglet Journée.</span>'}</p></div>
     <div class="card"><div class="ch"><h3>Version texte</h3><span class="note">à coller dans WhatsApp ou un e-mail</span></div><pre class="crtext" id="crtext">${esc(R.text)}</pre></div>`;
 }
@@ -456,6 +472,7 @@ const V=$('#view');
 V.addEventListener('click',e=>{
   const t=e.target;const b=t.closest('button');
   const nv=t.closest('[data-view]');if(nv){go(nv.dataset.view);return}
+  const cf=t.closest('[data-cufold]');if(cf){const k=cf.dataset.cufold;if(open.has(k))open.delete(k);else open.add(k);render();return}
   const pc=t.closest('[data-card]');if(pc){const k=pc.dataset.card;if(k==='fiches'||k==='cr'){go(k);return}
     const zk=k==='staff'?'staff':k==='bilan'?null:k==='ca'?'ca':'spaces';if(zk)open.add(zk);render();
     const tgt=k==='bilan'?document.querySelector('.card.bilan'):k==='ca'?document.querySelector('[data-zkey=ca]'):k==='staff'?document.querySelector('[data-zkey=staff]'):[...document.querySelectorAll('[data-zkey=spaces] .tsub')].find(h=>h.textContent.startsWith(k==='clean'?'Propreté':'Mise en place'))||document.querySelector('[data-zkey=spaces]');
@@ -510,8 +527,7 @@ V.addEventListener('input',e=>{
   if(t.id==='pickQ'){pickQ=t.value;const el=$('#picks');if(el)el.innerHTML=pickResults();return}
   // journée
   if(D.note!==undefined){state.bilan.note=t.value;persist();return}
-  if(D.caobs!==undefined){state.ca.obs=t.value;persist();return}
-  if(D.ca!==undefined&&D.caf){const r=state.ca.rows[D.ca]||(state.ca.rows[D.ca]={});r[D.caf]=t.value;if(t.value==='')delete r[D.caf];if(!Object.keys(r).length)delete state.ca.rows[D.ca];persist();rerenderKeepFocus();return}
+  if(D.cak){const k=D.cak;state.ca=state.ca||{};if(k.startsWith('act-')){const act=state.ca.act||(state.ca.act={});const kk=k.slice(4);if(t.value==='')delete act[kk];else act[kk]=t.value}else{if(t.value==='')delete state.ca[k];else state.ca[k]=t.value;if(k==='objectif'){try{if(t.value)localStorage.setItem(LS+'objectif',t.value)}catch(e){}}}persist();if(k==='obs')return;rerenderKeepFocus();return}
   if(D.f){const id=t.closest('.item').dataset.cid;const c=checkOf(id);if(t.value)c[D.f]=t.value;else delete c[D.f];if(D.f==='note'&&t.value&&!c.s)c.s='fix';persist();return}
   if(D.pf){const mid=t.closest('.item').dataset.mid;const m=team.rows.find(x=>x.id===mid);let r=staffRow(m);if(!r){const n=fullName(m);if(!n)return;r={id:uid(),mid:m.id,nom:n,serv:[m.fonction,m.sec].filter(Boolean).join(' · ')};state.regs.staff.push(r)}if(t.value)r[D.pf]=t.value;else delete r[D.pf];persist();return}
   if(D.m){const mid=t.closest('.item').dataset.mid;const m=team.rows.find(x=>x.id===mid);const old=fullName(m);m[D.m]=t.value;const r=state.regs.staff.find(x=>x.mid===mid)||state.regs.staff.find(x=>!x.mid&&x.nom===old);if(r&&(D.m==='prenom'||D.m==='nom'))r.nom=fullName(m);persistTeam();if(r)persist();return}

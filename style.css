@@ -247,18 +247,32 @@ button.kpi[aria-pressed=true]{outline:2px solid var(--pole);outline-offset:-2px}
 /* CA table */
 .tblwrap{overflow-x:auto;margin:0 -16px;padding:0 16px}
 table.ca{border-collapse:collapse;font-size:13px;min-width:1040px;width:100%}
-table.ca.compact{min-width:720px}
-table.ca.compact input{min-width:64px;padding:9px 6px}
-table.ca.compact th:first-child,table.ca.compact td:first-child{min-width:130px}
-table.ca.ro td{padding:7px 8px}
-table.ca td.calc{padding:0 8px;color:var(--ink-2);font-variant-numeric:tabular-nums}
-table.ca td.neg{color:var(--urg);font-weight:700}
-table.ca td.zero{color:var(--ok)}
-table.ca tr.total td{font-weight:700;background:var(--surface-2);padding:8px}
-.zone[data-zkey=ca] .items{padding:12px}
-.zone[data-zkey=ca] .item{display:block;padding:0;border-top:0}
-.zone[data-zkey=ca] label.wide{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
-.zone[data-zkey=ca] label.wide input{display:block;width:100%;margin-top:4px;font:inherit;font-size:14px;letter-spacing:0;text-transform:none}
+.zone[data-zkey=ca] .items{padding:0}
+.cu{display:block;padding:14px 16px 16px;border-top:0}
+.cu-hero{display:flex;flex-direction:column;gap:2px;margin-bottom:14px}
+.cu-lbl{font-size:12.5px;color:var(--ink-3)}
+.cu-big{font-family:var(--fd);font-size:44px;font-weight:600;line-height:1.05;color:var(--ink)}
+.cu-big small{font-size:22px;font-weight:600}
+.cu-sub{font-size:13px;color:var(--ink-2)}
+.cu-bar{display:block;height:6px;border-radius:99px;background:var(--surface-2);margin-top:8px;overflow:hidden}
+.cu-bar i{display:block;height:100%;background:var(--ok);border-radius:99px;transition:width .3s}
+.cu label{display:block;font-size:14px;color:var(--ink-2);margin:10px 0 0}
+.cu label input{display:block;width:100%;margin-top:6px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface);font:inherit;font-size:18px;color:var(--ink);font-variant-numeric:tabular-nums}
+.cu label input::placeholder{color:var(--ink-3)}
+.cu-unit{color:var(--ink-3);font-size:12.5px}
+.cu-two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.cu-two label{margin-top:0}
+.cu-out{display:block;margin-top:6px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2);font-size:18px;color:var(--ink);font-variant-numeric:tabular-nums}
+.cu-out small{color:var(--ink-3);font-size:13px}
+.cu-two.ro{margin:0 0 12px}.cu-two.ro>div{padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}.cu-two.ro b{display:block;font-family:var(--fd);font-size:28px;line-height:1.1}.cu-two.ro b small{font-size:14px;color:var(--ink-3);font-family:var(--fb)}
+.cu-fold{display:block;width:100%;text-align:left;margin:16px 0 0;padding:0;border:0;background:none;font:inherit;font-size:15px;font-weight:600;color:var(--accent);cursor:pointer}
+.cu-list{padding-bottom:4px}
+.cu-calc{font-size:13.5px;color:var(--ink-2);margin:10px 0 0}
+.cu-calc b.neg{color:var(--urg)}.cu-calc b.ok{color:var(--ok)}
+.cu-tbl{width:100%;border-collapse:collapse;font-size:14px}
+.cu-tbl td{padding:7px 0;border-bottom:1px solid var(--line)}
+.cu-tbl td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.cu-tbl tr.total td{font-weight:700;border-bottom:0;padding-top:9px}
 table.ca th{padding:8px 6px;background:var(--surface-2);border-bottom:1px solid var(--line);font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-3);font-weight:700;text-align:right;white-space:nowrap}
 table.ca th.grp{text-align:center;font-size:10px;letter-spacing:.1em;color:var(--ink-2);border-left:1px solid var(--line);background:var(--surface)}
 table.ca th.grp:first-child{border-left:0}
