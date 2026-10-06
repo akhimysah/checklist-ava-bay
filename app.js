@@ -38,6 +38,7 @@ const I={
   ani:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 13s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01"/></svg>',
   ent:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17c2-2 4-2 6 0s4 2 6 0 4-2 6 0M3 12c2-2 4-2 6 0s4 2 6 0 4-2 6 0"/><path d="M14 3l4 4-9 9H5v-4z"/></svg>',
 };
+const PI={dir:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V7l7-4 7 4v14"/><path d="M9 21v-5h6v5M9 11h.01M15 11h.01M9 14h.01M15 14h.01"/></svg>',rec:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 0 1 16 0v5a2 2 0 0 1-2 2h-1v-6h3M4 17v-6h3v6H6a2 2 0 0 1-2-2"/><path d="M12 19v2"/></svg>',bea:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c-2 3-6 5-6 10a6 6 0 0 0 12 0c0-5-4-7-6-10z"/><path d="M12 21v-4"/></svg>',cui:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11h16M5 11a7 7 0 0 1 14 0"/><path d="M3 15h18M12 4v1"/></svg>',ani:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 13s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01"/></svg>',ent:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17c2-2 4-2 6 0s4 2 6 0 4-2 6 0M3 12c2-2 4-2 6 0s4 2 6 0 4-2 6 0"/><path d="M14 3l4 4-9 9H5v-4z"/></svg>'};
 const VIEWS=[['jour','Journée',I.jour],['fiches','Clientes du jour',I.fiches],['base','Base clientes',I.base],['cr','Compte rendu',I.cr]];
 
 /* ---------- checklist du jour ---------- */
@@ -192,7 +193,25 @@ function renderJour(){
   const zones=(()=>{const z=checkStats();const rows=CHECKS.map(g=>{const gz=checkStats(g.id);return `<div class="tsec-in"><h4 class="tsub">${esc(g.title)} <span class="n">${gz.done}/${gz.n}</span></h4>${g.items.map(([id])=>checkItem(CHECK_ITEMS[id])).join('')}</div>`}).join('');return zoneHtml('spaces','Contrôle des espaces','Espaces',{n:z.n,done:z.done,ok:z.ok,fix:z.fix,urg:0},rows,!open.has('spaces'),z.done<z.n?'data-allok="all"':'')})();
   const bilan=`<div class="card bilan"><div class="ch"><h3>Bilan / priorités du lendemain</h3><span class="chip ${state.bilan.note?'ok':''}">${state.bilan.note?'✓ renseigné':'à renseigner'}</span></div><textarea data-note placeholder="Une difficulté, une décision, une priorité pour demain…">${esc(state.bilan.note||'')}</textarea><p class="note" style="margin:0">Repris tel quel dans le compte rendu du jour.</p></div>`;
   const gocr=`<div class="gocr"><p><b>Compte rendu de la journée</b><br>Personnel, contrôle des espaces, parcours clientes, messages envoyés et bilan.</p><button class="addbtn" data-view="cr">Générer le compte rendu</button></div>`;
-  return `${hero}<div class="sec-title"><h3>Préparer la journée</h3><span>${cs.done}/${cs.n} points vérifiés · ${ss.total-ss.todo}/${ss.total} présences renseignées</span></div><div class="jour-grid">${staffZone}${zones}${bilan}${gocr}</div>`;
+  return `${hero}${poleCards()}<div class="sec-title"><h3>Préparer la journée</h3><span>${cs.done}/${cs.n} points vérifiés · ${ss.total-ss.todo}/${ss.total} présences renseignées</span></div><div class="jour-grid">${staffZone}${zones}${bilan}${gocr}</div>`;
+}
+/* cartes colorées en tête de la journée */
+function poleCards(){
+  const ss=staffStats(),cl=checkStats('clean'),st=checkStats('setup');const fr=state.regs.client,sent=fr.filter(f=>f.sentAt).length;
+  const all=checkStats();const filled=(ss.total-ss.todo)+all.done+(state.bilan.note?1:0),tot=ss.total+all.n+1;
+  const pct=(a,b)=>b?Math.round(a/b*100):0;const C=2*Math.PI*18;
+  const ch=(t,c)=>`<span class="chip ${c||''}">${t}</span>`;
+  const cards=[
+    {k:'staff',cls:'dir',color:'#3E2B22',ic:PI.dir,name:'Présence du personnel',pc:pct(ss.total-ss.todo,ss.total),done:ss.total&&!ss.todo&&!ss.abs,chips:[ch(`${ss.ok+ss.late}/${ss.total} présents`),ss.late?ch(`${ss.late} retard${ss.late>1?'s':''}`,'fix'):'',ss.abs?ch(`${ss.abs} absent${ss.abs>1?'s':''}`,'urg'):'']},
+    {k:'clean',cls:'ent',color:'#4E7A5C',ic:PI.ent,name:'Propreté des espaces',pc:pct(cl.done,cl.n),done:cl.n&&cl.done===cl.n&&!cl.fix,chips:[ch(`${cl.ok}/${cl.n-cl.na} prêts`),cl.fix?ch(`${cl.fix} à corriger`,'fix'):'']},
+    {k:'setup',cls:'cui',color:'#C8742E',ic:PI.cui,name:'Mise en place',pc:pct(st.done,st.n),done:st.n&&st.done===st.n&&!st.fix,chips:[ch(`${st.ok}/${st.n-st.na} prêts`),st.fix?ch(`${st.fix} à corriger`,'fix'):'']},
+    {k:'fiches',cls:'rec',color:'#93412A',ic:PI.rec,name:'Clientes du jour',pc:pct(sent,fr.length),done:fr.length&&sent===fr.length,chips:[ch(`${fr.length} cliente${fr.length>1?'s':''}`),sent?ch(`${sent} programme${sent>1?'s':''} envoyé${sent>1?'s':''}`,'ok'):'']},
+    {k:'bilan',cls:'bea',color:'#B5607A',ic:PI.bea,name:'Bilan & priorités',pc:state.bilan.note?100:0,done:!!state.bilan.note,chips:[ch(state.bilan.note?'Renseigné':'À renseigner',state.bilan.note?'ok':'')]},
+    {k:'cr',cls:'ani',color:'#E0B04A',ic:PI.ani,name:'Compte rendu',pc:pct(filled,tot),done:false,chips:[ch('Envoyé à 11h et 20h')]},
+  ];
+  return `<div class="poles">${cards.map(c=>`<button class="pcard ${c.cls} ${c.done?'done':''}" style="--pole:${c.color}" data-card="${c.k}">
+    <div class="ph"><span class="ic">${c.ic}</span><svg class="ring" viewBox="0 0 46 46"><circle class="bg" cx="23" cy="23" r="18"/><circle class="fg" cx="23" cy="23" r="18" stroke-dasharray="${C}" stroke-dashoffset="${C*(1-c.pc/100)}"/><text x="23" y="27" text-anchor="middle">${c.pc}%</text></svg></div>
+    <h3>${c.name}</h3><div class="chips">${c.chips.filter(Boolean).join('')}</div></button>`).join('')}</div>`;
 }
 function zoneHtml(key,title,tag,z,rows,closed,allokAttr,extra=''){
   const n=z.n||1;
@@ -414,6 +433,10 @@ const V=$('#view');
 V.addEventListener('click',e=>{
   const t=e.target;const b=t.closest('button');
   const nv=t.closest('[data-view]');if(nv){go(nv.dataset.view);return}
+  const pc=t.closest('[data-card]');if(pc){const k=pc.dataset.card;if(k==='fiches'||k==='cr'){go(k);return}
+    const zk=k==='staff'?'staff':k==='bilan'?null:'spaces';if(zk)open.add(zk);render();
+    const tgt=k==='bilan'?document.querySelector('.card.bilan'):k==='staff'?document.querySelector('[data-zkey=staff]'):[...document.querySelectorAll('[data-zkey=spaces] .tsub')].find(h=>h.textContent.startsWith(k==='clean'?'Propreté':'Mise en place'))||document.querySelector('[data-zkey=spaces]');
+    if(tgt)tgt.scrollIntoView({behavior:'smooth',block:'start'});return}
   if(t.closest('[data-stop]'))return;
   const lb=t.closest('img[data-lb]');if(lb){const d=document.createElement('div');d.className='lb';d.innerHTML=`<img src="${lb.getAttribute('src')}" alt="">`;d.onclick=()=>d.remove();document.body.appendChild(d);return}
   const oc=t.closest('[data-opencl]');if(oc&&!b){clientOpen=clientOpen===oc.dataset.opencl?null:oc.dataset.opencl;render();return}

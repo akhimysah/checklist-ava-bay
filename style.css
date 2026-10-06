@@ -510,3 +510,8 @@ table.ca tr.total td{padding:9px 8px;font-weight:700;border-top:2px solid var(--
 .crlist{margin:0;padding:6px 2px;font-size:13.5px;color:var(--ink-2);line-height:1.6}
 .crlist b{display:inline-block;font-family:var(--fb);font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3);margin-right:8px;white-space:nowrap}
 @media(max-width:480px){.crrow{padding:9px 10px;gap:2px 8px}.crrow .crmain b{font-size:15.5px}}
+
+/* cartes de la journée */
+.poles{margin:18px 0 6px}
+.pcard{cursor:pointer;border:0;font:inherit}
+.pcard h3{font-family:var(--fd)}
