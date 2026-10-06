@@ -235,7 +235,7 @@ function poleCards(){
   const ch=(t,c)=>`<span class="chip ${c||''}">${t}</span>`;
   const cards=[
     {k:'staff',cls:'dir',color:'#3E2B22',ic:PI.dir,name:'Présence du personnel',pc:pct(ss.total-ss.todo,ss.total),done:ss.total&&!ss.todo&&!ss.abs,chips:[ch(`${ss.ok+ss.late}/${ss.total} présents`),ss.late?ch(`${ss.late} retard${ss.late>1?'s':''}`,'fix'):'',ss.abs?ch(`${ss.abs} absent${ss.abs>1?'s':''}`,'urg'):'']},
-    {k:'clean',cls:'ent',color:'#4E7A5C',ic:PI.ent,name:'Propreté des espaces',pc:pct(cl.done,cl.n),done:cl.n&&cl.done===cl.n&&!cl.fix,chips:[ch(`${cl.ok}/${cl.n-cl.na} prêts`),cl.fix?ch(`${cl.fix} à corriger`,'fix'):'']},
+    {k:'clean',cls:'ent',color:'#4E7A5C',ic:PI.ent,name:'Contrôle des espaces',pc:pct(cl.done,cl.n),done:cl.n&&cl.done===cl.n&&!cl.fix,chips:[ch(`${cl.ok}/${cl.n-cl.na} prêts`),cl.fix?ch(`${cl.fix} à corriger`,'fix'):'']},
     {k:'setup',cls:'cui',color:'#C8742E',ic:PI.cui,name:'Mise en place',pc:pct(st.done,st.n),done:st.n&&st.done===st.n&&!st.fix,chips:[ch(`${st.ok}/${st.n-st.na} prêts`),st.fix?ch(`${st.fix} à corriger`,'fix'):'']},
     {k:'fiches',cls:'rec',color:'#93412A',ic:PI.rec,name:'Clientes du jour',pc:pct(sent,fr.length),done:fr.length&&sent===fr.length,chips:[ch(`${fr.length} cliente${fr.length>1?'s':''}`),sent?ch(`${sent} programme${sent>1?'s':''} envoyé${sent>1?'s':''}`,'ok'):'']},
     {k:'bilan',cls:'bea',color:'#B5607A',ic:PI.bea,name:'Bilan & priorités',pc:state.bilan.note?100:0,done:!!state.bilan.note,chips:[ch(state.bilan.note?'Renseigné':'À renseigner',state.bilan.note?'ok':'')]},
